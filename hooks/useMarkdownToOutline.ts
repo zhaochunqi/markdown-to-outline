@@ -23,38 +23,18 @@ export function useMarkdownToOutline(markdown: string, options: UseMarkdownToOut
       }
 
       try {
-        // Parse front matter
-        const { content, data } = matter(markdown)
+        // Parse front matter and get content
+        const { content } = matter(markdown)
 
-        const result = await unified()
+        // Parse markdown to AST
+        const ast = await unified()
           .use(remarkParse)
-          .use(() => (tree) => {
-            const outlineNodes: string[] = []
+          .parse(content)
 
-            // Add front matter to outline if it exists
-            if (Object.keys(data).length > 0) {
-              outlineNodes.push("- Front Matter:")
-              for (const [key, value] of Object.entries(data)) {
-                outlineNodes.push(`  - ${key}: ${value}`)
-              }
-            }
-
-            visit(tree, (node) => {
-              if (node.type === "heading" || node.type === "paragraph" || node.type === "list") {
-                try {
-                  outlineNodes.push(convertToOutline(node, 0, options))
-                } catch (err) {
-                  console.error("Error converting node:", err)
-                  throw new Error(`Error converting node: ${err instanceof Error ? err.message : String(err)}`)
-                }
-              }
-            })
-            return outlineNodes.join("\n")
-          })
-          .use(remarkStringify)
-          .process(content) // Process the content without front matter
-
-        setOutline(String(result).trim())
+        // Convert AST to outline
+        const outlineContent = convertToOutline(ast, 0, { ...options, ignoreYamlFrontmatter: true })
+        
+        setOutline(outlineContent)
         setError(null)
       } catch (error) {
         console.error("Error processing markdown:", error)
@@ -68,4 +48,3 @@ export function useMarkdownToOutline(markdown: string, options: UseMarkdownToOut
 
   return { outline, error }
 }
-

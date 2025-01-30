@@ -7,6 +7,17 @@ export default function Home() {
   const [markdown, setMarkdown] = useState("")
   const [removeHeaderMarkers, setRemoveHeaderMarkers] = useState(false)
   const { outline, error } = useMarkdownToOutline(markdown, { removeHeaderMarkers })
+  const [copySuccess, setCopySuccess] = useState(false)
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(outline)
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000) // 2秒后重置状态
+    } catch (err) {
+      console.error('复制失败:', err)
+    }
+  }
 
   useEffect(() => {
     console.log("Current markdown:", markdown)
@@ -30,15 +41,27 @@ export default function Home() {
       <div className="flex-1 flex flex-col p-4">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-xl font-bold">Outline Output</h2>
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={removeHeaderMarkers}
-              onChange={(e) => setRemoveHeaderMarkers(e.target.checked)}
-              className="mr-2"
-            />
-            Remove Header Markers
-          </label>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={removeHeaderMarkers}
+                onChange={(e) => setRemoveHeaderMarkers(e.target.checked)}
+                className="mr-2"
+              />
+              Remove Header Markers
+            </label>
+            <button
+              onClick={handleCopy}
+              className={`px-3 py-1 rounded ${
+                copySuccess
+                  ? 'bg-green-500 text-white'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              } transition-colors duration-200`}
+            >
+              {copySuccess ? '已复制!' : '复制'}
+            </button>
+          </div>
         </div>
         <pre className="flex-1 p-2 bg-white border rounded-md overflow-auto whitespace-pre-wrap">
           {error ? `Error: ${error}` : outline || "No outline generated yet"}
@@ -47,4 +70,3 @@ export default function Home() {
     </div>
   )
 }
-
