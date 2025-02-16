@@ -1,11 +1,20 @@
 import type { Node } from "unist"
 
+export interface MarkdownNode extends Node {
+  children?: MarkdownNode[]
+  depth?: number
+  value?: string
+  lang?: string | null
+  url?: string | null
+  type: string
+}
+
 interface ConvertOptions {
   removeHeaderMarkers: boolean
   ignoreYamlFrontmatter?: boolean
 }
 
-export function convertToOutline(node: Node, depth = 0, options: ConvertOptions = { removeHeaderMarkers: false, ignoreYamlFrontmatter: true }): string {
+export function convertToOutline(node: MarkdownNode, depth = 0, options: ConvertOptions = { removeHeaderMarkers: false, ignoreYamlFrontmatter: true }): string {
   if (!node || typeof node !== "object") {
     throw new Error(`Invalid node: ${JSON.stringify(node)}`)
   }
@@ -36,7 +45,7 @@ export function convertToOutline(node: Node, depth = 0, options: ConvertOptions 
         throw new Error(`Invalid root node: ${JSON.stringify(node)}`)
       }
       
-      return (node.children as Node[])
+      return (node.children as MarkdownNode[])
         .map((child, index, array) => {
           // 检查下一个节点是否是列表
           const nextNode = array[index + 1]
@@ -89,7 +98,7 @@ export function convertToOutline(node: Node, depth = 0, options: ConvertOptions 
       if (!("children" in node)) {
         throw new Error(`Invalid list node: ${JSON.stringify(node)}`)
       }
-      return (node.children as Node[])
+      return (node.children as MarkdownNode[])
         .map((item) => convertToOutline(item, depth + 1, options))
         .filter(Boolean)
         .join("\n")
@@ -98,7 +107,7 @@ export function convertToOutline(node: Node, depth = 0, options: ConvertOptions 
       if (!("children" in node)) {
         throw new Error(`Invalid listItem node: ${JSON.stringify(node)}`)
       }
-      const itemContent = (node.children as Node[])
+      const itemContent = (node.children as MarkdownNode[])
         .map((child) => {
           if (child.type === "paragraph") {
             const content = (child.children as any[])
@@ -119,7 +128,7 @@ export function convertToOutline(node: Node, depth = 0, options: ConvertOptions 
       }
       // 将代码内容按行分割，每行都添加缩进
       const lines = (node as any).value.split('\n')
-      const indentedLines = lines.map(line => `${getIndent(depth + 2)}${line}`)  // 代码内容再多缩进一级
+      const indentedLines = lines.map((line: string) => `${getIndent(depth + 2)}${line}`)  // 代码内容再多缩进一级
       const codeContent = `\`\`\`${(node as any).lang || ''}\n${indentedLines.join('\n')}\n${getIndent(depth + 1)}\`\`\``  // 代码块标记缩进一级
       return `${getIndent(depth + 1)}- ${codeContent}`  // 整个代码块缩进一级
 
@@ -127,7 +136,7 @@ export function convertToOutline(node: Node, depth = 0, options: ConvertOptions 
       if (!("children" in node)) {
         throw new Error(`Invalid blockquote node: ${JSON.stringify(node)}`)
       }
-      const quoteContent = (node.children as Node[])
+      const quoteContent = (node.children as MarkdownNode[])
         .map((child) => {
           if (child.type === 'paragraph') {
             return (child.children as any[]).map(c => c.value || '').join('')

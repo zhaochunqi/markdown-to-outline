@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react"
 import { unified } from "unified"
 import remarkParse from "remark-parse"
-import remarkStringify from "remark-stringify"
-import { visit } from "unist-util-visit"
 import matter from "gray-matter"
 import { convertToOutline } from "../utils/convertToOutline"
+import type { MarkdownNode } from "../utils/convertToOutline"
 
 interface UseMarkdownToOutlineOptions {
   removeHeaderMarkers: boolean
@@ -32,7 +31,7 @@ export function useMarkdownToOutline(markdown: string, options: UseMarkdownToOut
           .parse(content)
 
         // Convert AST to outline
-        const outlineContent = convertToOutline(ast, 0, { ...options, ignoreYamlFrontmatter: true })
+        const outlineContent = convertToOutline(ast as unknown as MarkdownNode, 0, { ...options, ignoreYamlFrontmatter: true })
         
         setOutline(outlineContent)
         setError(null)
