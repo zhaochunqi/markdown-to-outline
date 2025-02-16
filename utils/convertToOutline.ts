@@ -36,20 +36,28 @@ export function convertToOutline(node: Node, depth = 0, options: ConvertOptions 
         throw new Error(`Invalid root node: ${JSON.stringify(node)}`)
       }
       
-      let lastHeadingLevel = 0
-      
       return (node.children as Node[])
-        .map((child) => {
-          if (child.type === "heading") {
-            const headingLevel = (child as any).depth
-            lastHeadingLevel = headingLevel
-            // 标题的缩进基于其级别
-            return convertToOutline(child, depth + headingLevel - 1, options)
+        .map((child, index, array) => {
+          // 检查下一个节点是否是列表
+          const nextNode = array[index + 1]
+          const hasListAfter = nextNode && nextNode.type === "list"
+          
+          if (child.type === "paragraph") {
+            // 段落总是以 - 开头
+            const paragraphContent = (child.children as any[])
+              .map(processTextContent)
+              .filter(Boolean)
+              .join("")
+            const trimmedContent = paragraphContent.trim()
+            if (!trimmedContent) return ""
+            return `${getIndent(depth)}- ${trimmedContent}`
+          } else if (child.type === "list" && array[index - 1]?.type === "paragraph") {
+            // 如果是列表且前面是段落，增加缩进
+            return convertToOutline(child, depth + 1, options)
           }
           
-          // 非标题内容的缩进基于最近的标题级别
-          const contentDepth = lastHeadingLevel ? depth + lastHeadingLevel : depth
-          return convertToOutline(child, contentDepth, options)
+          // 其他情况保持当前缩进
+          return convertToOutline(child, depth, options)
         })
         .filter(Boolean)
         .join("\n")
@@ -75,10 +83,6 @@ export function convertToOutline(node: Node, depth = 0, options: ConvertOptions 
         .join("")
       const trimmedContent = paragraphContent.trim()
       if (!trimmedContent) return ""
-      if (trimmedContent.startsWith('-')) {
-        // 如果内容以 '-' 开头，增加一级缩进
-        return `${getIndent(depth + 1)}${trimmedContent}`
-      }
       return `${getIndent(depth)}- ${trimmedContent}`
 
     case "list":
@@ -86,7 +90,7 @@ export function convertToOutline(node: Node, depth = 0, options: ConvertOptions 
         throw new Error(`Invalid list node: ${JSON.stringify(node)}`)
       }
       return (node.children as Node[])
-        .map((item) => convertToOutline(item, depth, options))
+        .map((item) => convertToOutline(item, depth + 1, options))
         .filter(Boolean)
         .join("\n")
 
@@ -95,16 +99,19 @@ export function convertToOutline(node: Node, depth = 0, options: ConvertOptions 
         throw new Error(`Invalid listItem node: ${JSON.stringify(node)}`)
       }
       const itemContent = (node.children as Node[])
-        .map((child) => convertToOutline(child, depth + 1, options))
+        .map((child) => {
+          if (child.type === "paragraph") {
+            const content = (child.children as any[])
+              .map(processTextContent)
+              .filter(Boolean)
+              .join("")
+            return content.trim()
+          }
+          return convertToOutline(child, depth, options)
+        })
         .filter(Boolean)
         .join("\n")
-      const trimmedItemContent = itemContent.trim()
-      if (!trimmedItemContent) return ""
-      if (trimmedItemContent.startsWith('-')) {
-        // 如果内容以 '-' 开头，增加一级缩进
-        return `${getIndent(depth + 1)}${trimmedItemContent}`
-      }
-      return `${getIndent(depth)}- ${trimmedItemContent}`
+      return `${getIndent(depth)}- ${itemContent}`
 
     case "code":
       if (!("value" in node)) {
@@ -115,6 +122,27 @@ export function convertToOutline(node: Node, depth = 0, options: ConvertOptions 
       const indentedLines = lines.map(line => `${getIndent(depth + 2)}${line}`)  // 代码内容再多缩进一级
       const codeContent = `\`\`\`${(node as any).lang || ''}\n${indentedLines.join('\n')}\n${getIndent(depth + 1)}\`\`\``  // 代码块标记缩进一级
       return `${getIndent(depth + 1)}- ${codeContent}`  // 整个代码块缩进一级
+
+    case "blockquote":
+      if (!("children" in node)) {
+        throw new Error(`Invalid blockquote node: ${JSON.stringify(node)}`)
+      }
+      const quoteContent = (node.children as Node[])
+        .map((child) => {
+          if (child.type === 'paragraph') {
+            return (child.children as any[]).map(c => c.value || '').join('')
+          }
+          return ''
+        })
+        .filter(Boolean)
+      
+      if (quoteContent.length === 0) return ''
+      
+      const firstLine = `${getIndent(depth)}- > ${quoteContent[0]}`
+      const restLines = quoteContent.slice(1)
+        .map(line => `${getIndent(depth + 1)}> ${line}`)
+      
+      return [firstLine, ...restLines].join('\n')
 
     default:
       return ""
