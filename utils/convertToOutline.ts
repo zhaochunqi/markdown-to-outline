@@ -148,7 +148,11 @@ export function convertToOutline(
       const quoteContent = (node.children as MarkdownNode[])
         .map(child => {
           if (child.type === 'paragraph') {
-            return (child.children as any[]).map(c => c.value || '').join('');
+            // 将所有内容连接起来，并移除 <br> 标签
+            return (child.children as any[])
+              .map(c => c.value || '')
+              .join('')
+              .replace(/<br>/g, '');
           }
           return '';
         })
