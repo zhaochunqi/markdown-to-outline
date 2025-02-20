@@ -19,16 +19,19 @@ This project is a Next.js application that converts Markdown content to an outli
 ### Installation
 
 1. Clone the repository:
+
    ```
    git clone https://github.com/your-username/markdown-to-outline.git
    ```
 
 2. Install dependencies:
+
    ```
    pnpm install
    ```
 
 3. Run the development server:
+
    ```
    pnpm run dev
    ```

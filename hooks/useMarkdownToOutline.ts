@@ -1,49 +1,52 @@
-import { useState, useEffect } from "react"
-import { unified } from "unified"
-import remarkParse from "remark-parse"
-import matter from "gray-matter"
-import { convertToOutline } from "../utils/convertToOutline"
-import type { MarkdownNode } from "../utils/convertToOutline"
+import { useState, useEffect } from 'react';
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import matter from 'gray-matter';
+import { convertToOutline } from '../utils/convertToOutline';
+import type { MarkdownNode } from '../utils/convertToOutline';
 
 interface UseMarkdownToOutlineOptions {
-  removeHeaderMarkers: boolean
+  removeHeaderMarkers: boolean;
 }
 
 export function useMarkdownToOutline(markdown: string, options: UseMarkdownToOutlineOptions) {
-  const [outline, setOutline] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [outline, setOutline] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const process = async () => {
       if (!markdown.trim()) {
-        setOutline("")
-        setError(null)
-        return
+        setOutline('');
+        setError(null);
+        return;
       }
 
       try {
         // Parse front matter and get content
-        const { content } = matter(markdown)
+        const { content } = matter(markdown);
 
         // Parse markdown to AST
-        const ast = await unified()
-          .use(remarkParse)
-          .parse(content)
+        const ast = await unified().use(remarkParse).parse(content);
 
         // Convert AST to outline
-        const outlineContent = convertToOutline(ast as unknown as MarkdownNode, 0, { ...options, ignoreYamlFrontmatter: true })
-        
-        setOutline(outlineContent)
-        setError(null)
+        const outlineContent = convertToOutline(ast as unknown as MarkdownNode, 0, {
+          ...options,
+          ignoreYamlFrontmatter: true,
+        });
+
+        setOutline(outlineContent);
+        setError(null);
       } catch (error) {
-        console.error("Error processing markdown:", error)
-        setError(`Error processing markdown: ${error instanceof Error ? error.message : String(error)}`)
-        setOutline("")
+        console.error('Error processing markdown:', error);
+        setError(
+          `Error processing markdown: ${error instanceof Error ? error.message : String(error)}`
+        );
+        setOutline('');
       }
-    }
+    };
 
-    process()
-  }, [markdown, options])
+    process();
+  }, [markdown, options]);
 
-  return { outline, error }
+  return { outline, error };
 }
