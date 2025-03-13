@@ -12,6 +12,7 @@ export interface MarkdownNode extends Node {
 interface ConvertOptions {
   removeHeaderMarkers: boolean;
   ignoreYamlFrontmatter?: boolean;
+  convertToLogseqTodo?: boolean;
 }
 
 export function convertToOutline(
@@ -20,6 +21,7 @@ export function convertToOutline(
   options: ConvertOptions = {
     removeHeaderMarkers: false,
     ignoreYamlFrontmatter: true,
+    convertToLogseqTodo: false,
   }
 ): string {
   if (!node || typeof node !== 'object') {
@@ -31,7 +33,17 @@ export function convertToOutline(
 
   // 处理文本内容
   const processTextContent = (node: any): string => {
-    if (node.type === 'text') return node.value;
+    if (node.type === 'text') {
+      // 检查是否有待办项格式 [ ] xxxx
+      if (options.convertToLogseqTodo && node.value) {
+        const todoRegex = /^\[\s?\]\s+(.+)$/;
+        const match = node.value.match(todoRegex);
+        if (match) {
+          return `TODO ${match[1]}`;
+        }
+      }
+      return node.value;
+    }
     if (node.type === 'link') return `[${node.children[0].value}](${node.url})`;
     if (node.type === 'emphasis') return `*${node.children.map(processTextContent).join('')}*`;
     if (node.type === 'strong') return `**${node.children.map(processTextContent).join('')}**`;

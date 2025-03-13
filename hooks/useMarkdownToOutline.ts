@@ -7,6 +7,7 @@ import type { MarkdownNode } from '../utils/convertToOutline';
 
 interface UseMarkdownToOutlineOptions {
   removeHeaderMarkers: boolean;
+  convertToLogseqTodo?: boolean;
 }
 
 export function useMarkdownToOutline(markdown: string, options: UseMarkdownToOutlineOptions) {
@@ -32,6 +33,7 @@ export function useMarkdownToOutline(markdown: string, options: UseMarkdownToOut
         const outlineContent = convertToOutline(ast as unknown as MarkdownNode, 0, {
           ...options,
           ignoreYamlFrontmatter: true,
+          convertToLogseqTodo: options.convertToLogseqTodo || false,
         });
 
         setOutline(outlineContent);

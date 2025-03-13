@@ -6,8 +6,10 @@ import { useMarkdownToOutline } from '../hooks/useMarkdownToOutline';
 export default function Home() {
   const [markdown, setMarkdown] = useState('');
   const [removeHeaderMarkers, setRemoveHeaderMarkers] = useState(false);
+  const [convertToLogseqTodo, setConvertToLogseqTodo] = useState(true);
   const { outline, error } = useMarkdownToOutline(markdown, {
     removeHeaderMarkers,
+    convertToLogseqTodo,
   });
   const [copySuccess, setCopySuccess] = useState(false);
 
@@ -44,7 +46,7 @@ export default function Home() {
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-xl font-bold">Outline Output</h2>
           <div className="flex items-center gap-2">
-            <label className="flex items-center">
+            <label className="flex items-center mr-4">
               <input
                 type="checkbox"
                 checked={removeHeaderMarkers}
@@ -52,6 +54,15 @@ export default function Home() {
                 className="mr-2"
               />
               Remove Header Markers
+            </label>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={convertToLogseqTodo}
+                onChange={e => setConvertToLogseqTodo(e.target.checked)}
+                className="mr-2"
+              />
+              转换为Logseq TODO
             </label>
             <button
               onClick={handleCopy}
