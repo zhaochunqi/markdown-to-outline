@@ -47,10 +47,8 @@ export function convertToOutline(
     if (node.type === 'link') return `[${node.children[0].value}](${node.url})`;
     if (node.type === 'emphasis') return `*${node.children.map(processTextContent).join('')}*`;
     if (node.type === 'strong') return `**${node.children.map(processTextContent).join('')}**`;
-    if (node.type === 'inlineCode')
-      return `${node.value}`;
-    if (node.type === 'code')
-      return `${node.lang || ''}${node.value}`;
+    if (node.type === 'inlineCode') return `${node.value}`;
+    if (node.type === 'code') return `${node.lang || ''}${node.value}`;
     return '';
   };
 
