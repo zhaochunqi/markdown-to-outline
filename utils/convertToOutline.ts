@@ -36,7 +36,7 @@ export function convertToOutline(
     if (node.type === 'text') {
       // 检查是否有待办项格式 [ ] xxxx
       if (options.convertToLogseqTodo && node.value) {
-        const todoRegex = /^\[\s?\]\s+(.+)$/;
+        const todoRegex = /^[\[\s?]\]\s+(.+)$/;
         const match = node.value.match(todoRegex);
         if (match) {
           return `TODO ${match[1]}`;
@@ -47,8 +47,10 @@ export function convertToOutline(
     if (node.type === 'link') return `[${node.children[0].value}](${node.url})`;
     if (node.type === 'emphasis') return `*${node.children.map(processTextContent).join('')}*`;
     if (node.type === 'strong') return `**${node.children.map(processTextContent).join('')}**`;
-    if (node.type === 'inlineCode') return `\`${node.value}\``;
-    if (node.type === 'code') return `\`\`\`${node.lang || ''}\n${node.value}\n\`\`\``;
+    if (node.type === 'inlineCode')
+      return `${node.value}`;
+    if (node.type === 'code')
+      return `${node.lang || ''}${node.value}`;
     return '';
   };
 
@@ -141,6 +143,20 @@ export function convertToOutline(
         })
         .filter(Boolean)
         .join('\n');
+
+      if (options.convertToLogseqTodo) {
+        const todoUncheckedRegex = /^\s*\[ \]\s*(.*)/s;
+        const matchUnchecked = itemContent.match(todoUncheckedRegex);
+        if (matchUnchecked) {
+          return `${getIndent(depth)}- TODO ${matchUnchecked[1]}`;
+        }
+
+        const todoCheckedRegex = /^\s*\[x\]\s*(.*)/is;
+        const matchChecked = itemContent.match(todoCheckedRegex);
+        if (matchChecked) {
+          return `${getIndent(depth)}- DONE ${matchChecked[1]}`;
+        }
+      }
       return `${getIndent(depth)}- ${itemContent}`;
 
     case 'code':
@@ -150,7 +166,14 @@ export function convertToOutline(
       // 将代码内容按行分割，每行都添加缩进
       const lines = (node as any).value.split('\n');
       const indentedLines = lines.map((line: string) => `${getIndent(depth + 2)}${line}`); // 代码内容再多缩进一级
-      const codeContent = `\`\`\`${(node as any).lang || ''}\n${indentedLines.join('\n')}\n${getIndent(depth + 1)}\`\`\``; // 代码块标记缩进一级
+      const codeContent = `
+
+${(node as any).lang || ''}
+${indentedLines.join('\n')}
+
+${getIndent(depth + 1)}
+
+`; // 代码块标记缩进一级
       return `${getIndent(depth + 1)}- ${codeContent}`; // 整个代码块缩进一级
 
     case 'blockquote':
