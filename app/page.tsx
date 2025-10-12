@@ -13,7 +13,9 @@ export default function Home() {
     clearAll,
   } = useBidirectionalConverter({
     removeHeaderMarkers: false, // Always keep header markers
-    debounceMs: 300,
+    debounceMs: 300, // Responsive debouncing
+    maxContentLength: 100000, // 100KB limit for performance
+    enableCaching: true, // Enable result caching
   });
 
   return (

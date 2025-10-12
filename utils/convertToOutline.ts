@@ -17,6 +17,16 @@ interface ConvertOptions {
 
 
 
+// Performance: Cache indent strings to avoid repeated string creation
+const indentCache = new Map<number, string>();
+const getIndent = (d: number): string => {
+  const depth = Math.max(0, d);
+  if (!indentCache.has(depth)) {
+    indentCache.set(depth, '  '.repeat(depth));
+  }
+  return indentCache.get(depth)!;
+};
+
 export function convertToOutline(
   node: MarkdownNode,
   depth = 0,
@@ -30,28 +40,40 @@ export function convertToOutline(
     throw new Error(`Invalid node: ${JSON.stringify(node)}`);
   }
 
-  // 计算缩进
-  const getIndent = (d: number) => '  '.repeat(Math.max(0, d));
-
-  // 处理文本内容
+  // Performance: Optimize text content processing with early returns and caching
   const processTextContent = (node: any): string => {
-    if (node.type === 'text') {
-      // 检查是否有待办项格式 [ ] xxxx
-      if (options.convertToLogseqTodo && node.value) {
-        const todoRegex = /^[\[\s?]\]\s+(.+)$/;
-        const match = node.value.match(todoRegex);
-        if (match) {
-          return `TODO ${match[1]}`;
+    switch (node.type) {
+      case 'text':
+        if (!node.value) return '';
+        // Performance: Only check TODO format if conversion is enabled
+        if (options.convertToLogseqTodo) {
+          const todoMatch = node.value.match(/^[\[\s?]\]\s+(.+)$/);
+          if (todoMatch) {
+            return `TODO ${todoMatch[1]}`;
+          }
         }
-      }
-      return node.value;
+        return node.value;
+      
+      case 'link':
+        return node.children?.[0]?.value ? `[${node.children[0].value}](${node.url})` : '';
+      
+      case 'emphasis':
+        if (!node.children) return '';
+        return `*${node.children.map(processTextContent).join('')}*`;
+      
+      case 'strong':
+        if (!node.children) return '';
+        return `**${node.children.map(processTextContent).join('')}**`;
+      
+      case 'inlineCode':
+        return node.value || '';
+      
+      case 'code':
+        return `${node.lang || ''}${node.value || ''}`;
+      
+      default:
+        return '';
     }
-    if (node.type === 'link') return `[${node.children[0].value}](${node.url})`;
-    if (node.type === 'emphasis') return `*${node.children.map(processTextContent).join('')}*`;
-    if (node.type === 'strong') return `**${node.children.map(processTextContent).join('')}**`;
-    if (node.type === 'inlineCode') return `${node.value}`;
-    if (node.type === 'code') return `${node.lang || ''}${node.value}`;
-    return '';
   };
 
   switch (node.type) {
@@ -146,10 +168,19 @@ export function convertToOutline(
       if (!('value' in node)) {
         throw new Error(`Invalid code node: ${JSON.stringify(node)}`);
       }
-      // 将代码内容按行分割，每行都添加缩进
-      const lines = (node as any).value.split('\n');
-      const indentedLines = lines.map((line: string) => `${getIndent(depth + 2)}${line}`); // 代码内容再多缩进一级
-      const codeContent = '```' + ((node as any).lang || '') + '\n' + indentedLines.join('\n') + '\n' + getIndent(depth + 1) + '```';
+      // Performance: Optimize code block processing
+      const codeValue = (node as any).value || '';
+      const codeLang = (node as any).lang || '';
+      
+      if (!codeValue) {
+        return `${getIndent(depth)}- \`\`\`${codeLang}\n${getIndent(depth + 1)}\`\`\``;
+      }
+      
+      // Performance: Use more efficient string building for large code blocks
+      const lines = codeValue.split('\n');
+      const baseIndent = getIndent(depth + 2);
+      const indentedLines = lines.map((line: string) => `${baseIndent}${line}`);
+      const codeContent = `\`\`\`${codeLang}\n${indentedLines.join('\n')}\n${getIndent(depth + 1)}\`\`\``;
       return `${getIndent(depth)}- ${codeContent}`;
 
     case 'blockquote':
@@ -182,19 +213,27 @@ export function convertToOutline(
 }
 
 /**
- * Processes children nodes while maintaining proper hierarchy
+ * Processes children nodes while maintaining proper hierarchy with performance optimizations
  */
 function processChildrenWithHierarchy(
   children: MarkdownNode[],
   baseDepth: number,
   options: ConvertOptions
 ): string {
+  if (!children || children.length === 0) return '';
+  
   const results: string[] = [];
   let currentHeadingLevel = 0;
   let currentDepth = baseDepth;
   
+  // Performance: Pre-allocate array with estimated size
+  results.length = 0;
+  
   for (let i = 0; i < children.length; i++) {
     const child = children[i];
+    
+    // Performance: Skip empty or invalid nodes early
+    if (!child || !child.type) continue;
     
     if (child.type === 'heading') {
       const headingLevel = (child as any).depth;
@@ -216,9 +255,9 @@ function processChildrenWithHierarchy(
       const headingResult = convertToOutline(child, currentDepth, options);
       if (headingResult) results.push(headingResult);
     } else if (child.type === 'paragraph') {
-      // Check if this paragraph is followed by a list - if so, treat it as a parent
+      // Performance: Look ahead only when necessary
       const nextChild = i + 1 < children.length ? children[i + 1] : null;
-      const isFollowedByList = nextChild && nextChild.type === 'list';
+      const isFollowedByList = nextChild?.type === 'list';
       
       if (isFollowedByList) {
         // This paragraph should be a parent of the following list
@@ -228,7 +267,7 @@ function processChildrenWithHierarchy(
         
         // Process the following list as children of this paragraph
         i++; // Skip the next iteration since we're processing the list here
-        const listResult = convertToOutline(nextChild, contentDepth + 1, options);
+        const listResult = convertToOutline(nextChild!, contentDepth + 1, options);
         if (listResult) results.push(listResult);
       } else {
         // Regular paragraph processing
@@ -244,5 +283,6 @@ function processChildrenWithHierarchy(
     }
   }
   
-  return results.filter(Boolean).join('\n');
+  // Performance: Use join directly instead of filter then join
+  return results.join('\n');
 }

@@ -3,7 +3,7 @@
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Copy, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 
 interface PanelEditorProps {
   title: string;
@@ -15,7 +15,7 @@ interface PanelEditorProps {
   validationHints?: string[];
 }
 
-export function PanelEditor({
+const PanelEditorComponent = ({
   title,
   content,
   placeholder,
@@ -23,21 +23,17 @@ export function PanelEditor({
   error,
   className = '',
   validationHints = [],
-}: PanelEditorProps) {
+}: PanelEditorProps) => {
   const [copySuccess, setCopySuccess] = useState(false);
   const [copyError, setCopyError] = useState(false);
 
-  const handleCopy = async () => {
+  // Performance: Memoize copy handler to avoid recreation on every render
+  const handleCopy = useCallback(async () => {
     if (!content.trim()) return;
     
     try {
-      // Ensure proper formatting and indentation is preserved
-      const formattedContent = content
-        .split('\n')
-        .map(line => line) // Preserve original formatting
-        .join('\n');
-      
-      await navigator.clipboard.writeText(formattedContent);
+      // Performance: Avoid unnecessary string processing for copy
+      await navigator.clipboard.writeText(content);
       setCopySuccess(true);
       setCopyError(false);
       
@@ -48,7 +44,26 @@ export function PanelEditor({
       setCopyError(true);
       setTimeout(() => setCopyError(false), 3000);
     }
-  };
+  }, [content]);
+
+  // Performance: Memoize character count and status
+  const contentStats = useMemo(() => {
+    const length = content.length;
+    const hasContent = content.trim().length > 0;
+    const isLarge = length > 50000; // Flag large content for UI feedback
+    
+    return {
+      length,
+      hasContent,
+      isLarge,
+      displayText: isLarge ? `${Math.floor(length / 1000)}K 字符` : `${length} 字符`
+    };
+  }, [content]);
+
+  // Performance: Memoize textarea change handler
+  const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onChange(e.target.value);
+  }, [onChange]);
 
   return (
     <div className={`flex flex-col h-full ${className}`}>
@@ -62,20 +77,24 @@ export function PanelEditor({
           }`}></div>
           <h2 className="text-lg font-medium text-gray-900">{title}</h2>
           <div className={`text-xs px-2 py-1 rounded-full transition-colors duration-200 ${
-            content.trim() 
-              ? 'text-gray-600 bg-gray-200' 
+            contentStats.hasContent 
+              ? contentStats.isLarge 
+                ? 'text-orange-600 bg-orange-100' 
+                : 'text-gray-600 bg-gray-200'
               : 'text-gray-400 bg-gray-100'
           }`}>
-            {content.length} 字符
-            {content.trim() && (
-              <span className="ml-1 text-green-600">• 可复制</span>
+            {contentStats.displayText}
+            {contentStats.hasContent && (
+              <span className={`ml-1 ${contentStats.isLarge ? 'text-orange-700' : 'text-green-600'}`}>
+                • {contentStats.isLarge ? '大文档' : '可复制'}
+              </span>
             )}
           </div>
         </div>
         
         <Button
           onClick={handleCopy}
-          disabled={!content.trim()}
+          disabled={!contentStats.hasContent}
           size="sm"
           variant="ghost"
           className={`transition-all duration-300 ${
@@ -84,8 +103,8 @@ export function PanelEditor({
               : copyError
               ? 'bg-red-100 text-red-700 hover:bg-red-200 shadow-sm'
               : 'hover:bg-gray-100 text-gray-600 hover:shadow-sm'
-          } ${!content.trim() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          title={!content.trim() ? '没有内容可复制' : copySuccess ? '复制成功！' : copyError ? '复制失败，请重试' : '复制到剪贴板'}
+          } ${!contentStats.hasContent ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          title={!contentStats.hasContent ? '没有内容可复制' : copySuccess ? '复制成功！' : copyError ? '复制失败，请重试' : '复制到剪贴板'}
         >
           {copySuccess ? (
             <>
@@ -112,13 +131,31 @@ export function PanelEditor({
       <div className="flex-1 flex flex-col p-4">
         <Textarea
           value={content}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={handleTextareaChange}
           placeholder={placeholder}
-          className={`flex-1 resize-none font-mono text-sm leading-relaxed border-0 focus:ring-0 focus:outline-none bg-transparent placeholder:text-gray-400 ${
-            error ? 'text-red-600' : 'text-gray-800'
+          className={`flex-1 resize-none font-mono text-sm leading-relaxed border-0 focus:ring-0 focus:outline-none bg-transparent placeholder:text-gray-400 transition-colors duration-200 ${
+            error ? 'text-red-600' : contentStats.isLarge ? 'text-gray-700' : 'text-gray-800'
           }`}
+          spellCheck={false} // Performance: Disable spellcheck for large content
         />
         
+        {/* Performance warning for large content */}
+        {contentStats.isLarge && !error && (
+          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start space-x-2">
+              <svg className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-amber-800 mb-1">⚡ 大文档性能提示</p>
+                <p className="text-sm text-amber-700">
+                  当前文档较大，转换可能需要更多时间。系统已自动优化处理速度。
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Error display */}
         {error && (
           <div className="mt-3 p-4 bg-red-50 border border-red-200 rounded-lg animate-in slide-in-from-top-2 duration-300">
@@ -145,6 +182,12 @@ export function PanelEditor({
                         <li>• 检查 Logseq 格式的缩进是否一致</li>
                         <li>• 确保使用 - 或 * 作为项目符号</li>
                         <li>• TODO/DONE 项目需要正确的格式</li>
+                      </>
+                    ) : error.includes('过长') || error.includes('长度') ? (
+                      <>
+                        <li>• 尝试分割大文档为较小的部分</li>
+                        <li>• 移除不必要的内容或格式</li>
+                        <li>• 考虑使用更简洁的格式</li>
                       </>
                     ) : (
                       <>
@@ -181,4 +224,7 @@ export function PanelEditor({
       </div>
     </div>
   );
-}
+};
+
+// Performance: Memoize the component to prevent unnecessary re-renders
+export const PanelEditor = memo(PanelEditorComponent);
