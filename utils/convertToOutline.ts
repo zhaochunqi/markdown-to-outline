@@ -215,8 +215,29 @@ function processChildrenWithHierarchy(
       
       const headingResult = convertToOutline(child, currentDepth, options);
       if (headingResult) results.push(headingResult);
+    } else if (child.type === 'paragraph') {
+      // Check if this paragraph is followed by a list - if so, treat it as a parent
+      const nextChild = i + 1 < children.length ? children[i + 1] : null;
+      const isFollowedByList = nextChild && nextChild.type === 'list';
+      
+      if (isFollowedByList) {
+        // This paragraph should be a parent of the following list
+        const contentDepth = currentHeadingLevel > 0 ? currentDepth + 1 : baseDepth;
+        const paragraphResult = convertToOutline(child, contentDepth, options);
+        if (paragraphResult) results.push(paragraphResult);
+        
+        // Process the following list as children of this paragraph
+        i++; // Skip the next iteration since we're processing the list here
+        const listResult = convertToOutline(nextChild, contentDepth + 1, options);
+        if (listResult) results.push(listResult);
+      } else {
+        // Regular paragraph processing
+        const contentDepth = currentHeadingLevel > 0 ? currentDepth + 1 : baseDepth;
+        const contentResult = convertToOutline(child, contentDepth, options);
+        if (contentResult) results.push(contentResult);
+      }
     } else {
-      // For non-heading content, indent one level deeper than current heading
+      // For other non-heading content, indent one level deeper than current heading
       const contentDepth = currentHeadingLevel > 0 ? currentDepth + 1 : baseDepth;
       const contentResult = convertToOutline(child, contentDepth, options);
       if (contentResult) results.push(contentResult);

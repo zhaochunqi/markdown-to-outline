@@ -7,26 +7,26 @@
   - _需求: 1.1, 1.2, 1.3, 1.4_
 
 - [ ] 2. 实现 Logseq 大纲到 Markdown 的反向转换功能
-  - [ ] 2.1 创建 Logseq 大纲解析器
+  - [x] 2.1 创建 Logseq 大纲解析器
     - 编写解析函数识别 Logseq 格式的缩进结构
     - 实现 TODO/DONE 项目的识别和解析
     - 处理不同层级的项目符号和内容
     - _需求: 4.2, 5.1, 5.3_
   
-  - [ ] 2.2 实现 Logseq 到 Markdown 转换逻辑
+  - [x] 2.2 实现 Logseq 到 Markdown 转换逻辑
     - 将缩进的项目符号转换为相应级别的 Markdown 标题
     - 转换 TODO/DONE 项目为标准 Markdown 任务列表格式
     - 处理代码块、引用等特殊格式的转换
     - _需求: 4.2, 4.3, 4.4_
 
-- [ ] 3. 创建双向转换管理 Hook
-  - [ ] 3.1 实现 `useBidirectionalConverter` Hook
+- [x] 3. 创建双向转换管理 Hook
+  - [x] 3.1 实现 `useBidirectionalConverter` Hook
     - 创建管理 Markdown 和 Logseq 内容状态的 Hook
     - 实现 `updateMarkdown` 和 `updateLogseq` 函数
     - 添加防抖机制避免频繁转换
     - _需求: 4.1, 4.5_
   
-  - [ ] 3.2 集成双向转换逻辑
+  - [x] 3.2 集成双向转换逻辑
     - 当 Markdown 内容更新时自动转换为 Logseq 格式
     - 当 Logseq 内容更新时自动转换为 Markdown 格式
     - 实现内容清空和错误处理机制

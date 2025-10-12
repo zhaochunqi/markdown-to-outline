@@ -1,82 +1,74 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useMarkdownToOutline } from '../hooks/useMarkdownToOutline';
+import { useState } from 'react';
+import { useBidirectionalConverter } from '@/hooks/useBidirectionalConverter';
+import { PanelEditor } from '@/components/PanelEditor';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 export default function Home() {
-  const [markdown, setMarkdown] = useState('');
   const [removeHeaderMarkers, setRemoveHeaderMarkers] = useState(false);
-  const [convertToLogseqTodo, setConvertToLogseqTodo] = useState(true);
-  const { outline, error } = useMarkdownToOutline(markdown, {
+  
+  const {
+    markdownContent,
+    logseqContent,
+    error,
+    updateMarkdown,
+    updateLogseq,
+    clearAll,
+  } = useBidirectionalConverter({
     removeHeaderMarkers,
-    convertToLogseqTodo,
+    debounceMs: 300,
   });
-  const [copySuccess, setCopySuccess] = useState(false);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(outline);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000); // 2秒后重置状态
-    } catch (err) {
-      console.error('复制失败:', err);
-    }
-  };
-
-  useEffect(() => {
-    console.log('Current markdown:', markdown);
-    console.log('Current outline:', outline);
-    if (error) {
-      console.error('Error:', error);
-    }
-  }, [markdown, outline, error]);
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <div className="flex flex-1 flex-col p-4">
-        <h2 className="mb-2 text-xl font-bold">Markdown Input</h2>
-        <textarea
-          className="flex-1 resize-none rounded-md border p-2"
-          value={markdown}
-          onChange={e => setMarkdown(e.target.value)}
-          placeholder="Enter your Markdown here..."
-        />
-      </div>
-      <div className="flex flex-1 flex-col p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Outline Output</h2>
-          <div className="flex items-center gap-2">
-            <label className="flex items-center mr-4">
-              <input
-                type="checkbox"
-                checked={removeHeaderMarkers}
-                onChange={e => setRemoveHeaderMarkers(e.target.checked)}
-                className="mr-2"
-              />
-              Remove Header Markers
-            </label>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={convertToLogseqTodo}
-                onChange={e => setConvertToLogseqTodo(e.target.checked)}
-                className="mr-2"
-              />
-              转换为Logseq TODO
-            </label>
-            <button
-              onClick={handleCopy}
-              className={`rounded px-3 py-1 ${
-                copySuccess ? 'bg-green-500 text-white' : 'bg-blue-500 text-white hover:bg-blue-600'
-              } transition-colors duration-200`}
-            >
-              {copySuccess ? '已复制!' : '复制'}
-            </button>
+    <div className="flex h-screen bg-gray-50">
+      {/* Settings Bar */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+        <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-lg shadow-sm border">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="remove-headers"
+              checked={removeHeaderMarkers}
+              onCheckedChange={(checked) => setRemoveHeaderMarkers(checked as boolean)}
+            />
+            <Label htmlFor="remove-headers" className="text-sm font-medium">
+              移除标题标记
+            </Label>
           </div>
+          
+          <button
+            onClick={clearAll}
+            className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            清空全部
+          </button>
         </div>
-        <pre className="flex-1 overflow-auto whitespace-pre-wrap rounded-md border bg-white p-2">
-          {error ? `Error: ${error}` : outline || 'No outline generated yet'}
-        </pre>
+      </div>
+
+      {/* Main Content - Left and Right Panels */}
+      <div className="flex flex-1 pt-16">
+        {/* Left Panel - Markdown */}
+        <div className="flex-1 p-6 border-r border-gray-200">
+          <PanelEditor
+            title="Markdown"
+            content={markdownContent}
+            placeholder="在此输入 Markdown 内容..."
+            onChange={updateMarkdown}
+            error={error}
+          />
+        </div>
+
+        {/* Right Panel - Logseq Outline */}
+        <div className="flex-1 p-6">
+          <PanelEditor
+            title="Logseq 大纲"
+            content={logseqContent}
+            placeholder="在此输入 Logseq 大纲格式内容..."
+            onChange={updateLogseq}
+            error={error}
+          />
+        </div>
       </div>
     </div>
   );
