@@ -1,22 +1,30 @@
-# Product Overview
+# 产品概述
 
-This is a **Markdown to Outline Converter** - a Next.js web application that transforms Markdown content into structured outline format in real-time.
+## Markdown ⇄ Logseq 转换器
 
-## Core Functionality
+一个实时双向转换器，可以在 Markdown 和 Logseq 大纲格式之间转换内容。应用程序提供分屏界面，用户可以在任一格式中编辑，并实时查看转换到另一格式的结果。
 
-- **Real-time conversion**: Markdown input is processed instantly to generate outline output
-- **Customizable options**: Users can toggle header markers removal and Logseq TODO conversion
-- **Copy functionality**: Generated outlines can be copied to clipboard
-- **Dual-pane interface**: Side-by-side input and output for immediate feedback
+### 核心功能
 
-## Key Features
+- **双向转换**：Markdown 和 Logseq 格式之间的实时转换
+- **TODO 项目支持**：自动转换 TODO/DONE 项目格式
+- **层级结构保持**：维护正确的标题级别和嵌套结构
+- **性能优化**：针对大文档的防抖转换和缓存机制
+- **错误处理**：全面的验证和友好的中文错误提示
+- **复制功能**：一键复制转换后的内容
 
-- Processes Markdown with front matter support (using gray-matter)
-- Converts standard Markdown elements (headings, lists, paragraphs, code blocks, blockquotes)
-- Special Logseq integration for TODO/DONE items
-- Error handling and validation for malformed Markdown
-- Responsive design with Tailwind CSS styling
+### 目标用例
 
-## Target Use Case
+- 将 Logseq 笔记转换为标准 Markdown 用于发布
+- 将 Markdown 文档导入 Logseq 格式
+- 跨平台笔记格式兼容性
+- 不同笔记系统之间的内容迁移
 
-Designed for users who need to convert Markdown documents into hierarchical outline formats, particularly useful for note-taking systems like Logseq or structured documentation workflows.
+### 用户界面
+
+应用程序具有简洁现代的界面：
+- 分屏编辑器布局
+- 实时转换反馈
+- 大文档性能指示器
+- 验证提示和错误消息
+- 渐变背景的响应式设计

@@ -1,63 +1,86 @@
-# Project Structure
+# 项目结构
 
-## Directory Organization
+## 目录组织
 
-```
-├── app/                    # Next.js App Router pages
-│   ├── globals.css        # Global styles and CSS variables
-│   ├── layout.tsx         # Root layout component
-│   └── page.tsx           # Home page (main converter interface)
-├── components/            # Reusable UI components
-│   ├── ui/               # shadcn/ui component library
-│   └── theme-provider.tsx # Theme context provider
-├── hooks/                # Custom React hooks
-│   ├── use-mobile.tsx    # Mobile detection hook
-│   ├── use-toast.ts      # Toast notification hook
-│   └── useMarkdownToOutline.ts # Core markdown processing hook
-├── lib/                  # Utility libraries
-│   └── utils.ts          # Common utility functions (cn, etc.)
-├── utils/                # Business logic utilities
-│   └── convertToOutline.ts # Markdown AST to outline conversion
-├── styles/               # Additional stylesheets
-├── public/               # Static assets (images, icons)
-└── .kiro/                # Kiro IDE configuration
-    └── steering/         # AI assistant guidance files
-```
+### 核心应用
+- **`app/`**：Next.js App Router 页面和布局
+  - `page.tsx`：带双向编辑器的主应用页面
+  - `layout.tsx`：带主题提供者的根布局
+  - `globals.css`：全局样式和 CSS 变量
 
-## File Naming Conventions
+### 组件
+- **`components/`**：可复用的 React 组件
+  - `PanelEditor.tsx`：带复制功能的主编辑器组件
+  - `theme-provider.tsx`：主题上下文提供者
+  - **`ui/`**：shadcn/ui 组件库（40+ 个组件）
 
-- **Components**: PascalCase for React components (`ThemeProvider.tsx`)
-- **Hooks**: camelCase with `use` prefix (`useMarkdownToOutline.ts`)
-- **Utilities**: camelCase for functions (`convertToOutline.ts`)
-- **Pages**: lowercase for App Router (`page.tsx`, `layout.tsx`)
-- **Types**: PascalCase interfaces, often co-located with implementation
+### 业务逻辑
+- **`utils/`**：核心转换工具
+  - `convertToOutline.ts`：Markdown 到 Logseq 转换
+  - `convertLogseqToMarkdown.ts`：Logseq 到 Markdown 转换
+  - `parseLogseqOutline.ts`：Logseq 格式解析器
+  - `demo-*.ts`：示例文件和集成测试
+  - **`__tests__/`**：测试文件目录
 
-## Import Patterns
+### 自定义 Hooks
+- **`hooks/`**：React 自定义 hooks
+  - `useBidirectionalConverter.ts`：带缓存的主转换逻辑
+  - `useMarkdownToOutline.ts`：Markdown 处理 hook
+  - `use-toast.ts`：Toast 通知工具
+  - `use-mobile.tsx`：移动设备检测 hook
 
-- Use path aliases (`@/` prefix) for all internal imports
-- Group imports: external libraries first, then internal modules
-- Prefer named exports over default exports for utilities
-- Use `'use client'` directive for client-side components
+### 配置
+- **`lib/`**：共享工具
+  - `utils.ts`：通用工具函数（cn 等）
 
-## Component Architecture
+## 文件命名约定
 
-- **Client Components**: Interactive UI with state management
-- **Server Components**: Static rendering where possible
-- **Custom Hooks**: Encapsulate complex state logic and side effects
-- **Utility Functions**: Pure functions for data transformation
+### 组件
+- 组件文件使用 PascalCase：`PanelEditor.tsx`
+- UI 组件使用 kebab-case：`alert-dialog.tsx`
+- React 组件包含 `.tsx` 扩展名
 
-## Key Architectural Patterns
+### 工具
+- 工具文件使用 camelCase：`convertToOutline.ts`
+- 使用表明功能的描述性名称
+- 将相关工具分组在同一目录
 
-- **Separation of Concerns**: UI components separate from business logic
-- **Custom Hooks**: Complex state management abstracted into reusable hooks
-- **Type Safety**: Comprehensive TypeScript interfaces for all data structures
-- **Error Boundaries**: Graceful error handling in markdown processing
-- **Real-time Processing**: Immediate feedback using React's useEffect
+### Hooks
+- 以 `use` 为前缀：`useBidirectionalConverter.ts`
+- 前缀后使用 camelCase
+- 在同一文件中包含返回类型接口
 
-## Configuration Files
+## 导入模式
 
-- `components.json` - shadcn/ui configuration
-- `tailwind.config.ts` - Tailwind CSS customization
-- `tsconfig.json` - TypeScript compiler options with path mapping
-- `next.config.mjs` - Next.js build configuration
-- `.prettierrc` - Code formatting rules
+### 路径别名
+- `@/` 映射到项目根目录
+- 使用 `@/components/ui/` 导入 shadcn 组件
+- 使用 `@/hooks/` 导入自定义 hooks
+- 使用 `@/utils/` 导入工具函数
+- 使用 `@/lib/` 导入共享库
+
+### 导入组织
+1. 外部库（React、Next.js 等）
+2. 内部工具和 hooks
+3. 组件导入
+4. 类型导入（使用 `type` 关键字）
+
+## 代码组织原则
+
+### 性能优先
+- 记忆化昂贵的操作
+- 为转换结果使用缓存
+- 为用户输入实现防抖
+- 针对大文档处理进行优化
+
+### 类型安全
+- 为所有数据结构定义接口
+- 使用严格的 TypeScript 配置
+- 与实现一起导出类型
+- 尽可能使用类型导入
+
+### 组件结构
+- 保持组件专注和单一用途
+- 为复杂状态逻辑使用自定义 hooks
+- 实现适当的错误边界
+- 遵循 React 性能最佳实践
