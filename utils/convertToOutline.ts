@@ -15,6 +15,8 @@ interface ConvertOptions {
   convertToLogseqTodo?: boolean;
 }
 
+
+
 export function convertToOutline(
   node: MarkdownNode,
   depth = 0,
@@ -64,43 +66,26 @@ export function convertToOutline(
         throw new Error(`Invalid root node: ${JSON.stringify(node)}`);
       }
 
-      return (node.children as MarkdownNode[])
-        .map((child, index, array) => {
-          // 检查下一个节点是否是列表
-          const nextNode = array[index + 1];
-          const hasListAfter = nextNode && nextNode.type === 'list';
-
-          if (child.type === 'paragraph') {
-            // 段落总是以 - 开头
-            const paragraphContent = (child.children as any[])
-              .map(processTextContent)
-              .filter(Boolean)
-              .join('');
-            const trimmedContent = paragraphContent.trim();
-            if (!trimmedContent) return '';
-            return `${getIndent(depth)}- ${trimmedContent}`;
-          } else if (child.type === 'list' && array[index - 1]?.type === 'paragraph') {
-            // 如果是列表且前面是段落，增加缩进
-            return convertToOutline(child, depth + 1, options);
-          }
-
-          // 其他情况保持当前缩进
-          return convertToOutline(child, depth, options);
-        })
-        .filter(Boolean)
-        .join('\n');
+      return processChildrenWithHierarchy(
+        node.children as MarkdownNode[],
+        depth,
+        options
+      );
 
     case 'heading':
       if (!('depth' in node) || !('children' in node)) {
         throw new Error(`Invalid heading node: ${JSON.stringify(node)}`);
       }
+      
+      const headingLevel = node.depth as number;
       const headerMarker = options.removeHeaderMarkers
         ? ''
-        : '#'.repeat(node.depth as number) + ' ';
+        : '#'.repeat(headingLevel) + ' ';
       const headingContent = (node.children as any[])
         .map(processTextContent)
         .filter(Boolean)
         .join('');
+      
       return `${getIndent(depth)}- ${headerMarker}${headingContent}`;
 
     case 'paragraph':
@@ -120,7 +105,7 @@ export function convertToOutline(
         throw new Error(`Invalid list node: ${JSON.stringify(node)}`);
       }
       return (node.children as MarkdownNode[])
-        .map(item => convertToOutline(item, depth + 1, options))
+        .map(item => convertToOutline(item, depth, options))
         .filter(Boolean)
         .join('\n');
 
@@ -137,19 +122,19 @@ export function convertToOutline(
               .join('');
             return content.trim();
           }
-          return convertToOutline(child, depth, options);
+          return convertToOutline(child, depth + 1, options);
         })
         .filter(Boolean)
         .join('\n');
 
       if (options.convertToLogseqTodo) {
-        const todoUncheckedRegex = /^\s*\[ \]\s*(.*)/s;
+        const todoUncheckedRegex = /^\s*\[ \]\s*(.*)/;
         const matchUnchecked = itemContent.match(todoUncheckedRegex);
         if (matchUnchecked) {
           return `${getIndent(depth)}- TODO ${matchUnchecked[1]}`;
         }
 
-        const todoCheckedRegex = /^\s*\[x\]\s*(.*)/is;
+        const todoCheckedRegex = /^\s*\[x\]\s*(.*)/i;
         const matchChecked = itemContent.match(todoCheckedRegex);
         if (matchChecked) {
           return `${getIndent(depth)}- DONE ${matchChecked[1]}`;
@@ -194,4 +179,49 @@ export function convertToOutline(
     default:
       return '';
   }
+}
+
+/**
+ * Processes children nodes while maintaining proper hierarchy
+ */
+function processChildrenWithHierarchy(
+  children: MarkdownNode[],
+  baseDepth: number,
+  options: ConvertOptions
+): string {
+  const results: string[] = [];
+  let currentHeadingLevel = 0;
+  let currentDepth = baseDepth;
+  
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    
+    if (child.type === 'heading') {
+      const headingLevel = (child as any).depth;
+      
+      // Calculate the depth for this heading based on its level
+      if (currentHeadingLevel === 0) {
+        // First heading starts at base depth
+        currentDepth = baseDepth;
+      } else if (headingLevel > currentHeadingLevel) {
+        // Deeper heading - increase depth
+        currentDepth = baseDepth + headingLevel - 1;
+      } else if (headingLevel <= currentHeadingLevel) {
+        // Same level or higher level heading - adjust depth
+        currentDepth = baseDepth + headingLevel - 1;
+      }
+      
+      currentHeadingLevel = headingLevel;
+      
+      const headingResult = convertToOutline(child, currentDepth, options);
+      if (headingResult) results.push(headingResult);
+    } else {
+      // For non-heading content, indent one level deeper than current heading
+      const contentDepth = currentHeadingLevel > 0 ? currentDepth + 1 : baseDepth;
+      const contentResult = convertToOutline(child, contentDepth, options);
+      if (contentResult) results.push(contentResult);
+    }
+  }
+  
+  return results.filter(Boolean).join('\n');
 }
