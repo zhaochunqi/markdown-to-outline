@@ -70,6 +70,14 @@ export default function Home() {
               onChange={updateMarkdown}
               error={error}
               className="h-full"
+              validationHints={[
+                '使用 # ## ### 创建不同级别的标题',
+                '在 # 符号后添加空格',
+                '使用 - [ ] 创建待办事项',
+                '使用 - [x] 创建已完成事项',
+                '代码块需要用 ``` 包围',
+                '列表项使用 - 或 * 开头'
+              ]}
             />
           </div>
 
@@ -91,6 +99,14 @@ export default function Home() {
               onChange={updateLogseq}
               error={error}
               className="h-full"
+              validationHints={[
+                '使用 - 或 * 开始每个项目',
+                '使用 2 个空格进行缩进',
+                '保持缩进的一致性',
+                'TODO 和 DONE 项目会自动转换',
+                '子项目需要正确缩进在父项目下',
+                '避免混合使用不同的项目符号'
+              ]}
             />
           </div>
         </div>

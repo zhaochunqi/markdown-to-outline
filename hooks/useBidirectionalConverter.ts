@@ -46,8 +46,18 @@ export function useBidirectionalConverter(
     }
 
     try {
+      // Validate basic Markdown structure
+      if (markdown.includes('```') && (markdown.match(/```/g) || []).length % 2 !== 0) {
+        throw new Error('代码块未正确闭合，请检查 ``` 符号是否成对出现');
+      }
+
       // Parse front matter and get content
       const { content } = matter(markdown);
+
+      // Check for common Markdown issues
+      if (content.includes('#') && !content.match(/^#+\s/m)) {
+        throw new Error('标题格式不正确，请在 # 符号后添加空格');
+      }
 
       // Parse markdown to AST
       const ast = await unified().use(remarkParse).parse(content);
@@ -61,9 +71,18 @@ export function useBidirectionalConverter(
 
       return outlineContent;
     } catch (error) {
-      throw new Error(
-        `Error converting Markdown to Logseq: ${error instanceof Error ? error.message : String(error)}`
-      );
+      if (error instanceof Error) {
+        // Provide more specific error messages
+        if (error.message.includes('Unexpected')) {
+          throw new Error(`Markdown 解析错误：发现意外的语法结构。请检查格式是否正确。`);
+        } else if (error.message.includes('parse')) {
+          throw new Error(`Markdown 解析失败：${error.message}。请检查语法格式。`);
+        } else {
+          throw new Error(`转换到 Logseq 格式时出错：${error.message}`);
+        }
+      } else {
+        throw new Error(`转换过程中发生未知错误，请尝试重新输入内容。`);
+      }
     }
   }, [options.removeHeaderMarkers]);
 
@@ -76,6 +95,28 @@ export function useBidirectionalConverter(
     }
 
     try {
+      // Validate basic Logseq structure
+      const lines = logseq.split('\n').filter(line => line.trim());
+      
+      // Check for consistent indentation
+      const indentedLines = lines.filter(line => line.match(/^\s+/));
+      if (indentedLines.length > 0) {
+        const inconsistentIndent = indentedLines.some(line => {
+          const indent = line.match(/^\s*/)?.[0] || '';
+          return indent.length % 2 !== 0; // Assuming 2-space indentation
+        });
+        
+        if (inconsistentIndent) {
+          throw new Error('缩进不一致，请使用统一的缩进格式（建议每级 2 个空格）');
+        }
+      }
+
+      // Check for valid bullet points
+      const bulletLines = lines.filter(line => line.trim().match(/^[-*+]/));
+      if (bulletLines.length === 0 && lines.length > 0) {
+        throw new Error('未找到有效的项目符号，请使用 - 或 * 开始每个项目');
+      }
+
       const result = convertLogseqToMarkdown(logseq, {
         preserveIndentation: true,
         convertTodoItems: true,
@@ -85,9 +126,20 @@ export function useBidirectionalConverter(
       // Apply cleanup to ensure proper Markdown formatting
       return cleanupMarkdown(result);
     } catch (error) {
-      throw new Error(
-        `Error converting Logseq to Markdown: ${error instanceof Error ? error.message : String(error)}`
-      );
+      if (error instanceof Error) {
+        // Provide more specific error messages
+        if (error.message.includes('indent') || error.message.includes('缩进')) {
+          throw new Error(`Logseq 格式错误：${error.message}`);
+        } else if (error.message.includes('bullet') || error.message.includes('项目符号')) {
+          throw new Error(`Logseq 格式错误：${error.message}`);
+        } else if (error.message.includes('parse')) {
+          throw new Error(`Logseq 解析失败：${error.message}。请检查格式是否正确。`);
+        } else {
+          throw new Error(`转换到 Markdown 格式时出错：${error.message}`);
+        }
+      } else {
+        throw new Error(`转换过程中发生未知错误，请检查 Logseq 格式是否正确。`);
+      }
     }
   }, []);
 

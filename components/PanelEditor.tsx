@@ -12,6 +12,7 @@ interface PanelEditorProps {
   onChange: (content: string) => void;
   error?: string | null;
   className?: string;
+  validationHints?: string[];
 }
 
 export function PanelEditor({
@@ -21,18 +22,31 @@ export function PanelEditor({
   onChange,
   error,
   className = '',
+  validationHints = [],
 }: PanelEditorProps) {
   const [copySuccess, setCopySuccess] = useState(false);
+  const [copyError, setCopyError] = useState(false);
 
   const handleCopy = async () => {
     if (!content.trim()) return;
     
     try {
-      await navigator.clipboard.writeText(content);
+      // Ensure proper formatting and indentation is preserved
+      const formattedContent = content
+        .split('\n')
+        .map(line => line) // Preserve original formatting
+        .join('\n');
+      
+      await navigator.clipboard.writeText(formattedContent);
       setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      setCopyError(false);
+      
+      // Show success feedback for 3 seconds (longer for better UX)
+      setTimeout(() => setCopySuccess(false), 3000);
     } catch (err) {
       console.error('复制失败:', err);
+      setCopyError(true);
+      setTimeout(() => setCopyError(false), 3000);
     }
   };
 
@@ -47,8 +61,15 @@ export function PanelEditor({
               : 'bg-indigo-500'
           }`}></div>
           <h2 className="text-lg font-medium text-gray-900">{title}</h2>
-          <div className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+          <div className={`text-xs px-2 py-1 rounded-full transition-colors duration-200 ${
+            content.trim() 
+              ? 'text-gray-600 bg-gray-200' 
+              : 'text-gray-400 bg-gray-100'
+          }`}>
             {content.length} 字符
+            {content.trim() && (
+              <span className="ml-1 text-green-600">• 可复制</span>
+            )}
           </div>
         </div>
         
@@ -57,21 +78,31 @@ export function PanelEditor({
           disabled={!content.trim()}
           size="sm"
           variant="ghost"
-          className={`transition-all duration-200 ${
+          className={`transition-all duration-300 ${
             copySuccess 
-              ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-              : 'hover:bg-gray-100 text-gray-600'
-          }`}
+              ? 'bg-green-100 text-green-700 hover:bg-green-200 shadow-sm scale-105' 
+              : copyError
+              ? 'bg-red-100 text-red-700 hover:bg-red-200 shadow-sm'
+              : 'hover:bg-gray-100 text-gray-600 hover:shadow-sm'
+          } ${!content.trim() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          title={!content.trim() ? '没有内容可复制' : copySuccess ? '复制成功！' : copyError ? '复制失败，请重试' : '复制到剪贴板'}
         >
           {copySuccess ? (
             <>
-              <Check className="w-4 h-4 mr-1" />
-              已复制
+              <Check className="w-4 h-4 mr-1 animate-pulse" />
+              <span className="font-medium">已复制</span>
+            </>
+          ) : copyError ? (
+            <>
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span className="font-medium">失败</span>
             </>
           ) : (
             <>
               <Copy className="w-4 h-4 mr-1" />
-              复制
+              <span>复制</span>
             </>
           )}
         </Button>
@@ -90,14 +121,59 @@ export function PanelEditor({
         
         {/* Error display */}
         {error && (
-          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-start space-x-2">
-              <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="mt-3 p-4 bg-red-50 border border-red-200 rounded-lg animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-start space-x-3">
+              <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-red-800 mb-1">转换失败</p>
+                <p className="text-sm text-red-700 leading-relaxed">{error}</p>
+                
+                {/* Error suggestions based on common issues */}
+                <div className="mt-3 p-3 bg-red-25 border border-red-100 rounded-md">
+                  <p className="text-xs font-medium text-red-800 mb-2">💡 常见解决方案：</p>
+                  <ul className="text-xs text-red-700 space-y-1">
+                    {error.includes('parse') || error.includes('解析') ? (
+                      <>
+                        <li>• 检查 Markdown 语法是否正确</li>
+                        <li>• 确保标题使用正确的 # 符号</li>
+                        <li>• 检查列表项是否有正确的缩进</li>
+                      </>
+                    ) : error.includes('Logseq') ? (
+                      <>
+                        <li>• 检查 Logseq 格式的缩进是否一致</li>
+                        <li>• 确保使用 - 或 * 作为项目符号</li>
+                        <li>• TODO/DONE 项目需要正确的格式</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>• 尝试清空内容重新输入</li>
+                        <li>• 检查是否有特殊字符或格式</li>
+                        <li>• 确保内容符合相应的格式规范</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Validation hints - show when no error and content is empty */}
+        {!error && !content.trim() && validationHints.length > 0 && (
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start space-x-2">
+              <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               <div>
-                <p className="text-sm font-medium text-red-800">转换错误</p>
-                <p className="text-sm text-red-700 mt-1">{error}</p>
+                <p className="text-sm font-medium text-blue-800 mb-2">💡 格式提示</p>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  {validationHints.map((hint, index) => (
+                    <li key={index}>• {hint}</li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
