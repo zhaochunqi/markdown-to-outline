@@ -164,15 +164,8 @@ export function convertToOutline(
       // 将代码内容按行分割，每行都添加缩进
       const lines = (node as any).value.split('\n');
       const indentedLines = lines.map((line: string) => `${getIndent(depth + 2)}${line}`); // 代码内容再多缩进一级
-      const codeContent = `
-
-${(node as any).lang || ''}
-${indentedLines.join('\n')}
-
-${getIndent(depth + 1)}
-
-`; // 代码块标记缩进一级
-      return `${getIndent(depth + 1)}- ${codeContent}`; // 整个代码块缩进一级
+      const codeContent = '```' + ((node as any).lang || '') + '\n' + indentedLines.join('\n') + '\n' + getIndent(depth + 1) + '```';
+      return `${getIndent(depth)}- ${codeContent}`;
 
     case 'blockquote':
       if (!('children' in node)) {
