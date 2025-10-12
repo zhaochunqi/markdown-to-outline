@@ -58,8 +58,8 @@ function convertNodesToMarkdown(
     }
   }
   
-  // Join with single newlines for cleaner output
-  return results.join('\n');
+  // Join with double newlines to create proper paragraph separation in Markdown
+  return results.join('\n\n');
 }
 
 /**
@@ -188,27 +188,9 @@ function convertBulletNode(content: string, level: number, parentLevel: number):
  * Determines if a bullet point should be converted to a heading
  */
 function shouldConvertToHeading(content: string, level: number): boolean {
-  // Convert to heading if:
-  // 1. Content explicitly contains heading markers
-  // 2. Content is at top levels (0-2) and looks like a title
-  
+  // Only convert to heading if content explicitly contains heading markers
   const hasHeadingMarkers = /^#{1,6}\s+/.test(content);
-  if (hasHeadingMarkers) {
-    return true;
-  }
-  
-  // Only convert to heading for top-level items that look like titles
-  if (level > 2) {
-    return false;
-  }
-  
-  // Heuristic: short content without ending punctuation might be a heading
-  const isShort = content.length < 80;
-  const noEndingPunctuation = !/[.!?。！？]$/.test(content.trim());
-  const hasCapitalStart = /^[A-Z\u4e00-\u9fff]/.test(content.trim());
-  const notSentence = !content.includes('，') && !content.includes(',') && content.split(' ').length < 8;
-  
-  return level <= 1 && isShort && noEndingPunctuation && hasCapitalStart && notSentence;
+  return hasHeadingMarkers;
 }
 
 /**
@@ -330,13 +312,16 @@ export function cleanupMarkdown(markdown: string): string {
   // Remove excessive blank lines (more than 2 consecutive)
   let cleaned = markdown.replace(/\n{3,}/g, '\n\n');
   
-  // Ensure proper spacing around headings
+  // Ensure proper spacing around headings (headings should have blank lines before and after)
   cleaned = cleaned.replace(/^(#{1,6}\s+.+)$/gm, '\n$1\n');
   
   // Clean up list formatting
   cleaned = cleaned.replace(/^(\s*)-\s+$/gm, ''); // Remove empty list items
   
-  // Trim whitespace from start and end
+  // Ensure paragraphs are properly separated (but don't add extra spacing if already correct)
+  cleaned = cleaned.replace(/([^\n])\n([^\n-#>])/g, '$1\n\n$2');
+  
+  // Trim whitespace from start and end, but preserve internal structure
   cleaned = cleaned.trim();
   
   return cleaned;

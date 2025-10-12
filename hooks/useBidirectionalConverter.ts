@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { convertToOutline } from '@/utils/convertToOutline';
-import { convertLogseqToMarkdown } from '@/utils/convertLogseqToMarkdown';
+import { convertLogseqToMarkdown, cleanupMarkdown } from '@/utils/convertLogseqToMarkdown';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import matter from 'gray-matter';
@@ -76,11 +76,14 @@ export function useBidirectionalConverter(
     }
 
     try {
-      return convertLogseqToMarkdown(logseq, {
+      const result = convertLogseqToMarkdown(logseq, {
         preserveIndentation: true,
         convertTodoItems: true,
         useTaskListFormat: true,
       });
+      
+      // Apply cleanup to ensure proper Markdown formatting
+      return cleanupMarkdown(result);
     } catch (error) {
       throw new Error(
         `Error converting Logseq to Markdown: ${error instanceof Error ? error.message : String(error)}`
