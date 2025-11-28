@@ -34,11 +34,10 @@ export function parseLogseqOutline(
   const lines = logseqContent.split('\n');
   const nodes: LogseqNode[] = [];
   const nodeStack: LogseqNode[] = [];
-  let lastHeadingLevel = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    
+
     // Skip empty lines
     if (!line.trim()) {
       continue;
@@ -49,25 +48,12 @@ export function parseLogseqOutline(
       continue;
     }
 
-    // Adjust level based on content type and context
-    if (parsedNode.type === 'heading') {
-      const headingMatch = parsedNode.content.match(/^(#{1,6})\s+(.*)$/);
-      if (headingMatch) {
-        const headingLevel = headingMatch[1].length;
-        parsedNode.level = headingLevel - 1; // H1 = level 0, H2 = level 1, etc.
-        lastHeadingLevel = headingLevel;
-      }
-    } else {
-      // For non-heading content, if it follows a heading and has the same indentation,
-      // make it a child of the last heading
-      if (parsedNode.level === 0 && lastHeadingLevel > 0) {
-        parsedNode.level = lastHeadingLevel; // Make it a child of the last heading
-      }
-    }
+    // For headings, keep the indentation-based level but store heading info
+    // The indentation determines hierarchy, not the heading level
 
-    // Determine the hierarchy level
+    // Determine the hierarchy level based on indentation and heading level
     const currentLevel = parsedNode.level;
-    
+
     // Pop nodes from stack until we find the correct parent level
     while (nodeStack.length > 0 && nodeStack[nodeStack.length - 1].level >= currentLevel) {
       nodeStack.pop();
@@ -91,10 +77,7 @@ export function parseLogseqOutline(
 /**
  * Parses a single line of Logseq outline format
  */
-function parseLogseqLine(
-  line: string,
-  options: ParseLogseqOptions
-): LogseqNode | null {
+function parseLogseqLine(line: string, options: ParseLogseqOptions): LogseqNode | null {
   if (!line.trim()) {
     return null;
   }
@@ -231,7 +214,7 @@ export function validateLogseqFormat(content: string): {
   }
 
   const lines = content.split('\n').filter(line => line.trim());
-  
+
   if (lines.length === 0) {
     warnings.push('Content appears to be empty');
     return { isValid: true, errors, warnings };
@@ -251,7 +234,7 @@ export function validateLogseqFormat(content: string): {
     // Check indentation consistency (should be multiples of 2)
     const indentMatch = line.match(/^(\s*)/);
     const indentation = indentMatch ? indentMatch[1].length : 0;
-    
+
     if (indentation % 2 !== 0) {
       warnings.push(`Line ${lineNumber}: Indentation should be multiples of 2 spaces`);
     }
