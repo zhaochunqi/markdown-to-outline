@@ -15,8 +15,6 @@ interface ConvertOptions {
   convertToLogseqTodo?: boolean;
 }
 
-
-
 // Performance: Cache indent strings to avoid repeated string creation
 const indentCache = new Map<number, string>();
 const getIndent = (d: number): string => {
@@ -53,24 +51,24 @@ export function convertToOutline(
           }
         }
         return node.value;
-      
+
       case 'link':
         return node.children?.[0]?.value ? `[${node.children[0].value}](${node.url})` : '';
-      
+
       case 'emphasis':
         if (!node.children) return '';
         return `*${node.children.map(processTextContent).join('')}*`;
-      
+
       case 'strong':
         if (!node.children) return '';
         return `**${node.children.map(processTextContent).join('')}**`;
-      
+
       case 'inlineCode':
         return node.value || '';
-      
+
       case 'code':
         return `${node.lang || ''}${node.value || ''}`;
-      
+
       default:
         return '';
     }
@@ -88,26 +86,20 @@ export function convertToOutline(
         throw new Error(`Invalid root node: ${JSON.stringify(node)}`);
       }
 
-      return processChildrenWithHierarchy(
-        node.children as MarkdownNode[],
-        depth,
-        options
-      );
+      return processChildrenWithHierarchy(node.children as MarkdownNode[], depth, options);
 
     case 'heading':
       if (!('depth' in node) || !('children' in node)) {
         throw new Error(`Invalid heading node: ${JSON.stringify(node)}`);
       }
-      
+
       const headingLevel = node.depth as number;
-      const headerMarker = options.removeHeaderMarkers
-        ? ''
-        : '#'.repeat(headingLevel) + ' ';
+      const headerMarker = options.removeHeaderMarkers ? '' : '#'.repeat(headingLevel) + ' ';
       const headingContent = (node.children as any[])
         .map(processTextContent)
         .filter(Boolean)
         .join('');
-      
+
       return `${getIndent(depth)}- ${headerMarker}${headingContent}`;
 
     case 'paragraph':
@@ -171,11 +163,11 @@ export function convertToOutline(
       // Performance: Optimize code block processing
       const codeValue = (node as any).value || '';
       const codeLang = (node as any).lang || '';
-      
+
       if (!codeValue) {
         return `${getIndent(depth)}- \`\`\`${codeLang}\n${getIndent(depth + 1)}\`\`\``;
       }
-      
+
       // Performance: Use more efficient string building for large code blocks
       const lines = codeValue.split('\n');
       const baseIndent = getIndent(depth + 2);
@@ -221,68 +213,58 @@ function processChildrenWithHierarchy(
   options: ConvertOptions
 ): string {
   if (!children || children.length === 0) return '';
-  
+
   const results: string[] = [];
-  let currentHeadingLevel = 0;
-  let currentDepth = baseDepth;
-  
+  let lastHeadingDepth = baseDepth;
+
   // Performance: Pre-allocate array with estimated size
   results.length = 0;
-  
+
   for (let i = 0; i < children.length; i++) {
     const child = children[i];
-    
+
     // Performance: Skip empty or invalid nodes early
     if (!child || !child.type) continue;
-    
+
     if (child.type === 'heading') {
+      // For headings, calculate depth based on heading level
       const headingLevel = (child as any).depth;
-      
-      // Calculate the depth for this heading based on its level
-      if (currentHeadingLevel === 0) {
-        // First heading starts at base depth
-        currentDepth = baseDepth;
-      } else if (headingLevel > currentHeadingLevel) {
-        // Deeper heading - increase depth
-        currentDepth = baseDepth + headingLevel - 1;
-      } else if (headingLevel <= currentHeadingLevel) {
-        // Same level or higher level heading - adjust depth
-        currentDepth = baseDepth + headingLevel - 1;
-      }
-      
-      currentHeadingLevel = headingLevel;
-      
-      const headingResult = convertToOutline(child, currentDepth, options);
+      lastHeadingDepth = baseDepth + headingLevel - 1;
+
+      const headingResult = convertToOutline(child, lastHeadingDepth, options);
       if (headingResult) results.push(headingResult);
     } else if (child.type === 'paragraph') {
-      // Performance: Look ahead only when necessary
+      // Look ahead to see if this paragraph is followed by a list
       const nextChild = i + 1 < children.length ? children[i + 1] : null;
       const isFollowedByList = nextChild?.type === 'list';
-      
+
       if (isFollowedByList) {
         // This paragraph should be a parent of the following list
-        const contentDepth = currentHeadingLevel > 0 ? currentDepth + 1 : baseDepth;
-        const paragraphResult = convertToOutline(child, contentDepth, options);
+        // Paragraphs that follow headings should be indented under them
+        const paragraphDepth = lastHeadingDepth > baseDepth ? lastHeadingDepth + 1 : baseDepth;
+        const paragraphResult = convertToOutline(child, paragraphDepth, options);
         if (paragraphResult) results.push(paragraphResult);
-        
+
         // Process the following list as children of this paragraph
         i++; // Skip the next iteration since we're processing the list here
-        const listResult = convertToOutline(nextChild!, contentDepth + 1, options);
+        const listResult = convertToOutline(nextChild!, paragraphDepth + 1, options);
         if (listResult) results.push(listResult);
       } else {
         // Regular paragraph processing
-        const contentDepth = currentHeadingLevel > 0 ? currentDepth + 1 : baseDepth;
-        const contentResult = convertToOutline(child, contentDepth, options);
-        if (contentResult) results.push(contentResult);
+        // If this paragraph follows a heading, indent it under the heading
+        // Otherwise, use base depth
+        const paragraphDepth = lastHeadingDepth > baseDepth ? lastHeadingDepth + 1 : baseDepth;
+        const paragraphResult = convertToOutline(child, paragraphDepth, options);
+        if (paragraphResult) results.push(paragraphResult);
       }
     } else {
-      // For other non-heading content, indent one level deeper than current heading
-      const contentDepth = currentHeadingLevel > 0 ? currentDepth + 1 : baseDepth;
+      // For other non-heading content, indent under the last heading if there is one
+      const contentDepth = lastHeadingDepth > baseDepth ? lastHeadingDepth + 1 : baseDepth;
       const contentResult = convertToOutline(child, contentDepth, options);
       if (contentResult) results.push(contentResult);
     }
   }
-  
+
   // Performance: Use join directly instead of filter then join
   return results.join('\n');
 }
