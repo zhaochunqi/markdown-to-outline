@@ -86,10 +86,5 @@
     "typescript": "^5",
     "unist": "^0.0.1",
     "vitest": "^4.0.17"
-  },
-  "lint-staged": {
-    "*.{ts,tsx}": [
-      "vitest --run"
-    ]
   }
 }
