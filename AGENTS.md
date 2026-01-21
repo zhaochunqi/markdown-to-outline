@@ -23,9 +23,8 @@ pnpm lint             # Run Next.js linting
 
 # Testing
 pnpm test             # Run tests with Vitest (watch mode by default)
-pnpm test:watch       # Run tests in watch mode
-pnpm test:run         # Run tests once and exit
-pnpm test:coverage    # Run tests with coverage report
+pnpm vitest run        # Run tests once and exit
+pnpm vitest run --coverage    # Run tests with coverage report
 
 # Run single test file
 pnpm vitest run utils/tests/convertToOutline.test.ts
@@ -49,6 +48,12 @@ pnpm prepare          # Install husky git hooks
 - Location: `**/*.test.{ts,tsx}`
 - Naming: `*.test.ts` or `*.test.tsx`
 - Use `describe`, `it`, `expect` from `vitest`
+
+### Testing Best Practices
+
+- **String comparison**: Use `expect(str).toBe(expected)` for exact string matching, **NEVER use `toContain`** for string comparisons
+- **Test organization**: Before writing tests, check if similar tests already exist to avoid duplication
+- **Test file placement**: Always determine the correct test file location - tests should be co-located with source files in `utils/tests/` or appropriately organized. **Do not create test files randomly**
 
 ## Code Style Guidelines
 

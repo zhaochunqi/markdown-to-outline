@@ -56,6 +56,11 @@ export function convertToOutline(
       case 'link':
         return node.children?.[0]?.value ? `[${node.children[0].value}](${node.url})` : '';
 
+      case 'linkReference':
+        const linkText = node.children?.[0]?.value || '';
+        const identifier = (node as any).identifier || '';
+        return `[${linkText}][${identifier}]`;
+
       case 'emphasis':
         if (!node.children) return '';
         return `*${node.children.map(processTextContent).join('')}*`;
@@ -87,7 +92,11 @@ export function convertToOutline(
         throw new Error(`Invalid root node: ${JSON.stringify(node)}`);
       }
 
-      return processChildrenWithHierarchy(node.children as MarkdownNode[], depth, options);
+      // Filter out definition nodes as they are just link definitions
+      const filteredChildren = (node.children as MarkdownNode[]).filter(
+        child => child.type !== 'definition'
+      );
+      return processChildrenWithHierarchy(filteredChildren, depth, options);
 
     case 'heading':
       if (!('depth' in node) || !('children' in node)) {
@@ -113,7 +122,24 @@ export function convertToOutline(
         .join('');
       const trimmedContent = paragraphContent.trim();
       if (!trimmedContent) return '';
-      return `${getIndent(depth)}- ${trimmedContent}`;
+
+      // Split paragraph content by newlines and create bullet points for each part
+      const parts = trimmedContent
+        .split('\n')
+        .map(part => part.trim())
+        .filter(Boolean);
+      if (parts.length === 0) return '';
+
+      return parts
+        .map((part, index) => {
+          if (index === 0) {
+            return `${getIndent(depth)}- ${part}`;
+          } else {
+            // For subsequent parts in the same paragraph, no bullet prefix
+            return part;
+          }
+        })
+        .join('\n');
 
     case 'list':
       if (!('children' in node)) {
@@ -141,36 +167,47 @@ export function convertToOutline(
           const trimmedContent = content.trim();
 
           if (trimmedContent) {
-            if (!firstParagraphAdded) {
-              // First paragraph - process it with the list item
-              let finalContent = trimmedContent;
+            // Split content by newlines to handle multiple paragraphs in one list item
+            const parts = trimmedContent
+              .split('\n')
+              .map(part => part.trim())
+              .filter(Boolean);
 
-              if (options.convertToLogseqTodo) {
-                const todoUncheckedRegex = /^\s*\[ \]\s*(.*)/;
-                const matchUnchecked = finalContent.match(todoUncheckedRegex);
-                if (matchUnchecked) {
-                  finalContent = `TODO ${matchUnchecked[1]}`;
-                } else {
-                  const todoCheckedRegex = /^\s*\[x\]\s*(.*)/i;
-                  const matchChecked = finalContent.match(todoCheckedRegex);
-                  if (matchChecked) {
-                    finalContent = `DONE ${matchChecked[1]}`;
+            parts.forEach((part, index) => {
+              if (!firstParagraphAdded) {
+                // First part - process it with the list item
+                let finalContent = part;
+
+                if (options.convertToLogseqTodo) {
+                  const todoUncheckedRegex = /^\s*\[ \]\s*(.*)/;
+                  const matchUnchecked = finalContent.match(todoUncheckedRegex);
+                  if (matchUnchecked) {
+                    finalContent = `TODO ${matchUnchecked[1]}`;
+                  } else {
+                    const todoCheckedRegex = /^\s*\[x\]\s*(.*)/i;
+                    const matchChecked = finalContent.match(todoCheckedRegex);
+                    if (matchChecked) {
+                      finalContent = `DONE ${matchChecked[1]}`;
+                    }
                   }
                 }
-              }
 
-              results.push(`${getIndent(depth)}- ${finalContent}`);
-              firstParagraphAdded = true;
-            } else {
-              // Additional paragraphs - treat as separate bullet points
-              const paragraphResult = convertToOutline(child, depth + 1, options);
-              if (paragraphResult) {
-                results.push(paragraphResult);
+                results.push(`${getIndent(depth)}- ${finalContent}`);
+                firstParagraphAdded = true;
+              } else {
+                // Additional parts - treat as separate bullet points with indentation
+                results.push(`${getIndent(depth + 1)}- ${part}`);
               }
-            }
+            });
+          }
+        } else if (child.type === 'list') {
+          // For nested lists, indent them as children of the current list item
+          const childContent = convertToOutline(child, depth + 1, options);
+          if (childContent) {
+            results.push(childContent);
           }
         } else {
-          // For non-paragraph children (like code blocks), create separate bullet points
+          // For other non-paragraph children (like code blocks), create separate bullet points
           // If we haven't added the first paragraph yet and this is the first non-paragraph child,
           // it means there was no paragraph, so just process this child
           if (!firstParagraphAdded && results.length === 0) {
@@ -226,10 +263,21 @@ export function convertToOutline(
 
       if (quoteContent.length === 0) return '';
 
-      const firstLine = `${getIndent(depth)}- > ${quoteContent[0]}`;
-      const restLines = quoteContent.slice(1).map(line => `${getIndent(depth + 1)}> ${line}`);
+      // Handle multi-line content by splitting on newlines
+      const allLines: string[] = [];
+      quoteContent.forEach(content => {
+        const lines = content.split('\n');
+        lines.forEach((line, index) => {
+          if (line.trim()) {
+            allLines.push(line.trim());
+          }
+        });
+      });
 
-      return [firstLine, ...restLines].join('\n');
+      if (allLines.length === 0) return '';
+
+      // Each line gets its own bullet point
+      return allLines.map(line => `${getIndent(depth)}- > ${line}`).join('\n');
 
     default:
       return '';
@@ -247,7 +295,7 @@ function processChildrenWithHierarchy(
   if (!children || children.length === 0) return '';
 
   const results: string[] = [];
-  let lastHeadingDepth = baseDepth;
+  let lastHeadingDepth = -1; // Start with -1 so first heading at level 1 becomes depth 0
 
   // Performance: Pre-allocate array with estimated size
   results.length = 0;
@@ -264,7 +312,14 @@ function processChildrenWithHierarchy(
       // Map h1->0, h2->1, h3->2, h4->3, etc.
       lastHeadingDepth = headingLevel - 1;
 
-      const headingResult = convertToOutline(child, 0, options);
+      // Special handling: if this is the first heading and not h1, treat it as top level
+      let headingDepth = lastHeadingDepth;
+      if (results.length === 0 && headingLevel > 1) {
+        headingDepth = 0; // Treat as top level
+        lastHeadingDepth = 0; // Also update lastHeadingDepth for subsequent calculations
+      }
+
+      const headingResult = convertToOutline(child, headingDepth, options);
       if (headingResult) results.push(headingResult);
     } else if (child.type === 'paragraph') {
       // Look ahead to see if this paragraph is followed by a list
@@ -274,7 +329,7 @@ function processChildrenWithHierarchy(
       if (isFollowedByList) {
         // This paragraph should be a parent of the following list
         // Paragraphs that follow headings should be indented under them
-        const paragraphDepth = lastHeadingDepth > baseDepth ? lastHeadingDepth + 1 : baseDepth;
+        const paragraphDepth = lastHeadingDepth >= 0 ? lastHeadingDepth + 1 : baseDepth;
         const paragraphResult = convertToOutline(child, paragraphDepth, options);
         if (paragraphResult) results.push(paragraphResult);
 
@@ -286,13 +341,13 @@ function processChildrenWithHierarchy(
         // Regular paragraph processing
         // If this paragraph follows a heading, indent it under the heading
         // Otherwise, use base depth
-        const paragraphDepth = lastHeadingDepth > baseDepth ? lastHeadingDepth + 1 : baseDepth;
+        const paragraphDepth = lastHeadingDepth >= 0 ? lastHeadingDepth + 1 : baseDepth;
         const paragraphResult = convertToOutline(child, paragraphDepth, options);
         if (paragraphResult) results.push(paragraphResult);
       }
     } else if (child.type === 'list') {
       // For lists, use the heading depth + 1, but ensure minimum depth for readability
-      let listDepth = lastHeadingDepth > baseDepth ? 1 : baseDepth;
+      let listDepth = lastHeadingDepth >= 0 ? Math.max(1, lastHeadingDepth) : baseDepth;
 
       // Collect consecutive list nodes
       const consecutiveLists: MarkdownNode[] = [child];
@@ -348,7 +403,7 @@ function processChildrenWithHierarchy(
       }
     } else {
       // For other non-heading content, indent under the last heading if there is one
-      const contentDepth = lastHeadingDepth > baseDepth ? lastHeadingDepth + 1 : baseDepth;
+      const contentDepth = lastHeadingDepth >= 0 ? lastHeadingDepth + 1 : baseDepth;
       const contentResult = convertToOutline(child, contentDepth, options);
       if (contentResult) results.push(contentResult);
     }
