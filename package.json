@@ -78,6 +78,8 @@
     "@vitejs/plugin-react": "^5.1.2",
     "@vitest/coverage-v8": "^4.0.17",
     "dedent": "^1.7.1",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.16",
     "husky": "^9.1.7",
     "jsdom": "^27.4.0",
     "lint-staged": "^16.2.7",

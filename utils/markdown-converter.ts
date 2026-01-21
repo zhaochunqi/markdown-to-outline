@@ -1,6 +1,6 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
-import { convertToOutline, MarkdownNode } from './convertToOutline';
+import { convertToOutline, MarkdownNode } from './convert-to-outline';
 
 export interface ConvertMarkdownOptions {
   removeHeaderMarkers?: boolean;

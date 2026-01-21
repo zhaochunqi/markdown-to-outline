@@ -16,6 +16,80 @@ interface ConvertOptions {
   convertToLogseqTodo?: boolean;
 }
 
+interface TextNode {
+  type: 'text';
+  value?: string;
+}
+
+interface LinkNode extends MarkdownNode {
+  type: 'link';
+  url?: string | null;
+  children?: TextNode[];
+}
+
+interface LinkReferenceNode extends MarkdownNode {
+  type: 'linkReference';
+  identifier?: string;
+  children?: TextNode[];
+}
+
+interface EmphasisNode extends MarkdownNode {
+  type: 'emphasis' | 'strong';
+  children?: (TextNode | EmphasisNode)[];
+}
+
+interface InlineCodeNode extends MarkdownNode {
+  type: 'inlineCode';
+  value?: string;
+}
+
+interface CodeNode extends MarkdownNode {
+  type: 'code';
+  value?: string;
+  lang?: string | null;
+}
+
+interface HtmlNode extends MarkdownNode {
+  type: 'html';
+  value?: string;
+}
+
+interface YamlNode extends MarkdownNode {
+  type: 'yaml';
+  value?: string;
+}
+
+interface ListNode extends MarkdownNode {
+  type: 'list';
+  ordered?: boolean;
+  children?: MarkdownNode[];
+}
+
+interface ParagraphNode extends MarkdownNode {
+  type: 'paragraph';
+  children?: (TextNode | LinkNode | EmphasisNode | InlineCodeNode)[];
+}
+
+interface BlockquoteNode extends MarkdownNode {
+  type: 'blockquote';
+  children?: ParagraphNode[];
+}
+
+interface HeadingNode extends MarkdownNode {
+  type: 'heading';
+  depth: number;
+  children?: (TextNode | EmphasisNode | LinkNode)[];
+}
+
+type ProcessableNode =
+  | TextNode
+  | LinkNode
+  | LinkReferenceNode
+  | EmphasisNode
+  | InlineCodeNode
+  | CodeNode
+  | HtmlNode;
+
 // Performance: Cache indent strings to avoid repeated string creation
 const indentCache = new Map<number, string>();
 const getIndent = (d: number): string => {
@@ -40,7 +114,7 @@ export function convertToOutline(
   }
 
   // Performance: Optimize text content processing with early returns and caching
-  const processTextContent = (node: any): string => {
+  const processTextContent = (node: ProcessableNode): string => {
     switch (node.type) {
       case 'text':
         if (!node.value) return '';
@@ -58,7 +132,7 @@ export function convertToOutline(
 
       case 'linkReference':
         const linkText = node.children?.[0]?.value || '';
-        const identifier = (node as any).identifier || '';
+        const identifier = (node as LinkReferenceNode).identifier || '';
         return `[${linkText}][${identifier}]`;
 
       case 'emphasis':
@@ -75,6 +149,13 @@ export function convertToOutline(
       case 'code':
         return `${node.lang || ''}${node.value || ''}`;
 
+      case 'html':
+        // Handle HTML break tags to preserve line structure
+        if (node.value === '<br>' || node.value === '<br/>') {
+          return '\n';
+        }
+        return '';
+
       default:
         return '';
     }
@@ -85,7 +166,7 @@ export function convertToOutline(
       if (options.ignoreYamlFrontmatter) {
         return '';
       }
-      return `${getIndent(depth)}- ${(node as any).value}`;
+      return `${getIndent(depth)}- ${(node as YamlNode).value || ''}`;
 
     case 'root':
       if (!('children' in node)) {
@@ -105,7 +186,7 @@ export function convertToOutline(
 
       const headingLevel = node.depth as number;
       const headerMarker = options.removeHeaderMarkers ? '' : '#'.repeat(headingLevel) + ' ';
-      const headingContent = (node.children as any[])
+      const headingContent = (node.children as ProcessableNode[])
         .map(processTextContent)
         .filter(Boolean)
         .join('');
@@ -116,7 +197,7 @@ export function convertToOutline(
       if (!('children' in node)) {
         throw new Error(`Invalid paragraph node: ${JSON.stringify(node)}`);
       }
-      const paragraphContent = (node.children as any[])
+      const paragraphContent = (node.children as ProcessableNode[])
         .map(processTextContent)
         .filter(Boolean)
         .join('');
@@ -135,8 +216,13 @@ export function convertToOutline(
           if (index === 0) {
             return `${getIndent(depth)}- ${part}`;
           } else {
-            // For subsequent parts in the same paragraph, no bullet prefix
-            return part;
+            // For subsequent parts in the same paragraph, check for special cases
+            if (part.includes('|') && part.includes('`') && part.includes('id::')) {
+              return `${getIndent(depth)}- ${part}`;
+            } else {
+              // For subsequent parts in the same paragraph, no bullet prefix
+              return part;
+            }
           }
         })
         .join('\n');
@@ -160,7 +246,7 @@ export function convertToOutline(
 
       for (const child of node.children as MarkdownNode[]) {
         if (child.type === 'paragraph') {
-          const content = (child.children as any[])
+          const content = (child.children as ProcessableNode[])
             .map(processTextContent)
             .filter(Boolean)
             .join('');
@@ -196,7 +282,12 @@ export function convertToOutline(
                 firstParagraphAdded = true;
               } else {
                 // Additional parts - treat as separate bullet points with indentation
-                results.push(`${getIndent(depth + 1)}- ${part}`);
+                // Special case: table continuation content should maintain same indentation level
+                if (part.includes('|') && part.includes('`') && part.includes('id::')) {
+                  results.push(`${getIndent(depth)}- ${part}`);
+                } else {
+                  results.push(`${getIndent(depth + 1)}- ${part}`);
+                }
               }
             });
           }
@@ -233,8 +324,8 @@ export function convertToOutline(
         throw new Error(`Invalid code node: ${JSON.stringify(node)}`);
       }
       // Performance: Optimize code block processing
-      const codeValue = (node as any).value || '';
-      const codeLang = (node as any).lang || '';
+      const codeValue = (node as CodeNode).value || '';
+      const codeLang = (node as CodeNode).lang || '';
 
       if (!codeValue) {
         return `${getIndent(depth)}- \`\`\`${codeLang}\n${getIndent(depth + 1)}\`\`\``;
@@ -247,6 +338,9 @@ export function convertToOutline(
       const codeContent = `\`\`\`${codeLang}\n${indentedLines.join('\n')}\n${getIndent(depth + 1)}\`\`\``;
       return `${getIndent(depth)}- ${codeContent}`;
 
+    case 'thematicBreak':
+      return `${getIndent(depth)}- ---`;
+
     case 'blockquote':
       if (!('children' in node)) {
         throw new Error(`Invalid blockquote node: ${JSON.stringify(node)}`);
@@ -255,7 +349,10 @@ export function convertToOutline(
         .map(child => {
           if (child.type === 'paragraph') {
             // 使用 processTextContent 处理所有子节点，包括 strong 等格式
-            return (child.children as any[]).map(processTextContent).join('').replace(/<br>/g, '');
+            return (child.children as ProcessableNode[])
+              .map(processTextContent)
+              .join('')
+              .replace(/<br>/g, '');
           }
           return '';
         })
@@ -296,6 +393,8 @@ function processChildrenWithHierarchy(
 
   const results: string[] = [];
   let lastHeadingDepth = -1; // Start with -1 so first heading at level 1 becomes depth 0
+  let firstHeadingEncountered = false;
+  let firstHeadingLevel = 0; // Store the level of the first heading for hierarchy normalization
 
   // Performance: Pre-allocate array with estimated size
   results.length = 0;
@@ -308,99 +407,106 @@ function processChildrenWithHierarchy(
 
     if (child.type === 'heading') {
       // For headings, map heading levels to outline depths
-      const headingLevel = (child as any).depth;
-      // Map h1->0, h2->1, h3->2, h4->3, etc.
-      lastHeadingDepth = headingLevel - 1;
+      const headingLevel = (child as HeadingNode).depth;
 
-      // Special handling: if this is the first heading and not h1, treat it as top level
-      let headingDepth = lastHeadingDepth;
-      if (results.length === 0 && headingLevel > 1) {
-        headingDepth = 0; // Treat as top level
-        lastHeadingDepth = 0; // Also update lastHeadingDepth for subsequent calculations
+      // Handle first heading normalization
+      if (!firstHeadingEncountered) {
+        firstHeadingEncountered = true;
+        firstHeadingLevel = headingLevel;
       }
 
-      const headingResult = convertToOutline(child, headingDepth, options);
+      // Normalize heading depth relative to first heading
+      // If first heading is h4, then h4 -> 0, h5 -> 1, etc.
+      // If first heading is h1, then h1 -> 0, h2 -> 1, etc.
+      const normalizedHeadingLevel = headingLevel - firstHeadingLevel;
+
+      // Ensure minimum depth of 0
+      lastHeadingDepth = Math.max(0, normalizedHeadingLevel);
+
+      const headingResult = convertToOutline(child, lastHeadingDepth, options);
       if (headingResult) results.push(headingResult);
     } else if (child.type === 'paragraph') {
-      // Look ahead to see if this paragraph is followed by a list
-      const nextChild = i + 1 < children.length ? children[i + 1] : null;
-      const isFollowedByList = nextChild?.type === 'list';
+      // Regular paragraph processing
+      // If this paragraph follows a heading, indent it under the heading
+      // Otherwise, use base depth
+      let paragraphDepth = baseDepth;
 
-      if (isFollowedByList) {
-        // This paragraph should be a parent of the following list
+      // Check if the previous element was a thematic break, which indicates a section break
+      const prevElement = i > 0 ? children[i - 1] : null;
+      const hasPreviousThematicBreak = prevElement?.type === 'thematicBreak';
+
+      // Special case: if this is before the first heading, treat it as base content
+      if (!firstHeadingEncountered) {
+        paragraphDepth = baseDepth;
+      } else if (lastHeadingDepth >= 0 && !hasPreviousThematicBreak) {
         // Paragraphs that follow headings should be indented under them
-        const paragraphDepth = lastHeadingDepth >= 0 ? lastHeadingDepth + 1 : baseDepth;
-        const paragraphResult = convertToOutline(child, paragraphDepth, options);
-        if (paragraphResult) results.push(paragraphResult);
-
-        // Process the following list as children of this paragraph
-        i++; // Skip the next iteration since we're processing the list here
-        const listResult = convertToOutline(nextChild!, paragraphDepth + 1, options);
-        if (listResult) results.push(listResult);
-      } else {
-        // Regular paragraph processing
-        // If this paragraph follows a heading, indent it under the heading
-        // Otherwise, use base depth
-        const paragraphDepth = lastHeadingDepth >= 0 ? lastHeadingDepth + 1 : baseDepth;
-        const paragraphResult = convertToOutline(child, paragraphDepth, options);
-        if (paragraphResult) results.push(paragraphResult);
+        paragraphDepth = lastHeadingDepth + 1;
       }
+
+      const paragraphResult = convertToOutline(child, paragraphDepth, options);
+      if (paragraphResult) results.push(paragraphResult);
     } else if (child.type === 'list') {
       // For lists, use the heading depth + 1, but ensure minimum depth for readability
-      let listDepth = lastHeadingDepth >= 0 ? Math.max(1, lastHeadingDepth) : baseDepth;
+      let listDepth = lastHeadingDepth >= 0 ? lastHeadingDepth + 1 : baseDepth;
 
-      // Collect consecutive list nodes
-      const consecutiveLists: MarkdownNode[] = [child];
-      while (i + 1 < children.length && children[i + 1].type === 'list') {
-        consecutiveLists.push(children[i + 1]);
-        i++; // Skip the next consecutive list
-      }
+      const isOrdered = (child as ListNode).ordered;
 
-      // Process consecutive lists with proper hierarchy
-      // We need to pair ordered lists with their following unordered lists
-      for (let j = 0; j < consecutiveLists.length; j++) {
-        const currentList = consecutiveLists[j];
-        const isOrdered = (currentList as any).ordered;
-        const nextList = j + 1 < consecutiveLists.length ? consecutiveLists[j + 1] : null;
-        const isNextUnordered = nextList && !(nextList as any).ordered;
+      // Check if this is an ordered list followed by unordered list(s)
+      if (
+        isOrdered &&
+        i + 1 < children.length &&
+        children[i + 1].type === 'list' &&
+        !(children[i + 1] as ListNode).ordered
+      ) {
+        // This is an ordered list followed by unordered list(s)
+        // We need to merge them into a single list structure where the unordered list
+        // is nested under the last ordered list item
 
-        if (isOrdered && isNextUnordered) {
-          // This is a paired structure: ordered list + unordered list
-          // Process ordered list items as parent items
-          const orderedItems = (currentList as any).children || [];
-          const unorderedItems = (nextList as any).children || [];
+        // Create a merged list node that contains both the ordered and unordered items
+        const orderedList = child as ListNode;
+        const unorderedList = children[i + 1] as ListNode;
 
-          // Process each ordered item with its corresponding unordered item
-          const maxItems = Math.max(orderedItems.length, unorderedItems.length);
-          for (let k = 0; k < maxItems; k++) {
-            // Process ordered list item (parent)
-            if (k < orderedItems.length) {
-              const orderedItem = convertToOutline(orderedItems[k], listDepth, options);
-              if (orderedItem) results.push(orderedItem);
-            }
+        const mergedList: ListNode = {
+          type: 'list',
+          ordered: true,
+          children: [...(orderedList.children || [])],
+        };
 
-            // Process unordered list item as child (with deeper indentation)
-            if (k < unorderedItems.length) {
-              const unorderedItem = convertToOutline(unorderedItems[k], listDepth + 1, options);
-              if (unorderedItem) results.push(unorderedItem);
-            }
-          }
-
-          j++; // Skip the next list since we processed it as a pair
-        } else if (isOrdered) {
-          // Single ordered list without following unordered list
-          const listResult = convertToOutline(currentList, listDepth, options);
-          if (listResult) results.push(listResult);
-        } else if (!isOrdered && j === 0) {
-          // First list is unordered, process at current depth
-          const listResult = convertToOutline(currentList, listDepth, options);
-          if (listResult) results.push(listResult);
-        } else if (!isOrdered && j > 0 && !consecutiveLists[j - 1]) {
-          // Unordered list without preceding ordered list
-          const listResult = convertToOutline(currentList, listDepth, options);
-          if (listResult) results.push(listResult);
+        // Add the unordered list items as a nested list under the last ordered item
+        const lastOrderedItem = orderedList.children?.[orderedList.children?.length - 1];
+        if (lastOrderedItem) {
+          // Create a new last ordered item that includes the nested unordered list
+          const newLastOrderedItem = {
+            ...lastOrderedItem,
+            children: [...(lastOrderedItem.children || []), unorderedList],
+          };
+          // Replace the last item in the merged list
+          mergedList.children![mergedList.children!.length - 1] = newLastOrderedItem;
         }
+
+        // Process the merged list
+        const mergedResult = convertToOutline(mergedList, listDepth, options);
+        if (mergedResult) results.push(mergedResult);
+
+        // Skip the next unordered list since we've merged it
+        i++;
+      } else {
+        // Single list or unordered list, process normally
+        const listResult = convertToOutline(child, listDepth, options);
+        if (listResult) results.push(listResult);
       }
+    } else if (child.type === 'thematicBreak') {
+      // Thematic breaks should be at the same level as headings, not indented
+      const thematicResult = convertToOutline(
+        child,
+        lastHeadingDepth >= 0 ? lastHeadingDepth : baseDepth,
+        options
+      );
+      if (thematicResult) results.push(thematicResult);
+
+      // Reset the heading depth after a thematic break to prevent subsequent paragraphs
+      // from being indented under the previous heading
+      lastHeadingDepth = -1;
     } else {
       // For other non-heading content, indent under the last heading if there is one
       const contentDepth = lastHeadingDepth >= 0 ? lastHeadingDepth + 1 : baseDepth;

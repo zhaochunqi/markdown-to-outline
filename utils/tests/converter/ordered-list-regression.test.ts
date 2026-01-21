@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
-import { convertToOutline } from '../../convertToOutline';
+import { convertToOutline, type MarkdownNode } from '../../convert-to-outline';
 
 describe('Converter - Ordered List Code Block Regression Tests', () => {
   it('should convert ordered list items with code blocks into separate bullet points', () => {
@@ -25,7 +25,7 @@ SELECT DISTINCT target_uuid FROM refs;
 
     const processor = unified().use(remarkParse);
     const tree = processor.parse(input);
-    const converted = convertToOutline(tree as any);
+    const converted = convertToOutline(tree as MarkdownNode);
 
     console.log('Fixed behavior:', converted);
     expect(converted).toContain('- ### **第一步：获取引用集合**');

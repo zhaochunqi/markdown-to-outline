@@ -4,7 +4,7 @@
  */
 
 import dedent from 'dedent';
-import { convertMarkdownToOutline, testConvertMarkdown } from '../utils/markdownConverter';
+import { convertMarkdownToOutline, testConvertMarkdown } from '../utils/markdown-converter';
 
 // Get markdown from command line arguments or use sample
 const markdown =

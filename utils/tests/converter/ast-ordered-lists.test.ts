@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { convertToOutline, MarkdownNode } from '../../convertToOutline';
+import { convertToOutline, MarkdownNode } from '../../convert-to-outline';
 
 describe('Converter - Ordered Lists with Code Blocks (AST Level)', () => {
   it('should convert ordered list item with code block as separate bullet points', () => {

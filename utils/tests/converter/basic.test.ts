@@ -4,7 +4,7 @@ import {
   convertMarkdownToOutline,
   testConvertMarkdown,
   parseMarkdown,
-} from '../../markdownConverter';
+} from '../../markdown-converter';
 
 describe('MarkdownConverter - Basic Operations', () => {
   it('should convert simple markdown paragraph', () => {
@@ -19,8 +19,10 @@ describe('MarkdownConverter - Basic Operations', () => {
   });
 
   it('should throw error for invalid input', () => {
-    expect(() => convertMarkdownToOutline(null as any)).toThrow('Markdown input must be a string');
-    expect(() => convertMarkdownToOutline(undefined as any)).toThrow(
+    expect(() => convertMarkdownToOutline(null as unknown as string)).toThrow(
+      'Markdown input must be a string'
+    );
+    expect(() => convertMarkdownToOutline(undefined as unknown as string)).toThrow(
       'Markdown input must be a string'
     );
   });
@@ -36,7 +38,7 @@ describe('MarkdownConverter - Basic Operations', () => {
 
   it('should provide test helper with error handling', () => {
     const validMarkdown = 'Hello';
-    const invalidMarkdown = null as any;
+    const invalidMarkdown = null as unknown as string;
 
     const validResult = testConvertMarkdown(validMarkdown);
     expect(validResult.success).toBe(true);

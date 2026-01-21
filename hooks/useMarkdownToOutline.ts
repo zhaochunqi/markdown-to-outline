@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import matter from 'gray-matter';
-import { convertToOutline } from '../utils/convertToOutline';
-import type { MarkdownNode } from '../utils/convertToOutline';
+import { convertToOutline } from '../utils/convert-to-outline';
+import type { MarkdownNode } from '../utils/convert-to-outline';
 
 interface UseMarkdownToOutlineOptions {
   removeHeaderMarkers: boolean;

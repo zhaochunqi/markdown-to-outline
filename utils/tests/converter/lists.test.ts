@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import dedent from 'dedent';
-import { convertMarkdownToOutline } from '../../markdownConverter';
+import { convertMarkdownToOutline } from '../../markdown-converter';
 
 describe('MarkdownConverter - Lists', () => {
   it('should convert simple unordered lists', () => {

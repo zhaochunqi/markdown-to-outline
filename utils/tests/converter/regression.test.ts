@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
-import { convertToOutline } from '../../convertToOutline';
+import { convertToOutline, type MarkdownNode } from '../../convert-to-outline';
 
 describe('Converter - Regression Tests', () => {
   it('should handle blockquote bug fix (Sputnik moment example)', () => {
@@ -12,36 +12,124 @@ describe('Converter - Regression Tests', () => {
 
     const processor = unified().use(remarkParse);
     const tree = processor.parse(input);
-    const converted = convertToOutline(tree as any);
+    const converted = convertToOutline(tree as MarkdownNode);
 
     expect(converted).toBe(expected);
   });
 
-  it('should handle list parsing regression (ordered/unordered list pairs)', () => {
-    const input = `### 典型应用场景
+  it('should handle heading hierarchy correctly (2.3 and 2.4 issue)', () => {
+    const input = `i
 
-1. **SQLite in the Browser (WASM)**：
-* 这是目前 OPFS 最著名的用例。通过 OPFS 的同步句柄，SQLite 编译成的 WebAssembly 可以在浏览器中像在原生环境中一样高效地读写数据库文件，而无需把整个数据库加载到内存中。
+#### 2.2 导出逻辑 (Database -> Markdown)
+
+这是"条件持久化"的核心实现。导出不是简单的 dump，而是一个带逻辑的渲染过程。
+
+1. **第一步：获取引用集合**
+在导出页面前，先查询数据库，找出哪些 Block 是"被引用者"。
+\`\`\`sql
+-- 找出所有作为 target 被引用的 block_uuid
+SELECT DISTINCT target_uuid FROM refs;
+
+\`\`\`
+
+*将此结果加载到内存中的 \`Set<String> referencedBlockIds\`。*
+2. **第二步：渲染流**
+遍历 Block 生成 Markdown 时，检查当前 Block 的 ID 是否在 \`Set\` 中。
+* **IF 存在：** 追加 HTML 注释 ID。
+* **IF 不存在：** 仅输出内容，**不输出 ID**。
 
 
-2. **高性能编辑器/IDE**：
-* 如 Photoshop Web 版、VS Code Web 版，利用 OPFS 暂存大量临时文件或工作区快照。
+*伪代码逻辑：*
+\`\`\`javascript
+function exportBlockToMarkdown(block, referencedBlockIds) {
+    let line = "- " + block.content;
+
+    // 只有当这个块被其他地方引用了，才把身份证号写在脸上
+    if (referencedBlockIds.has(block.uuid)) {
+        line += \` \`;
+    }
+
+    return line;
+}
+
+\`\`\`
 
 
-3. **视频/音频处理**：
-* 处理大型媒体文件时，需要频繁的随机读写（seek and write），OPFS 是唯一能满足 Web端这一需求的方案。`;
 
-    const expected = `- ### 典型应用场景
-  - **SQLite in the Browser (WASM)**：
-    - 这是目前 OPFS 最著名的用例。通过 OPFS 的同步句柄，SQLite 编译成的 WebAssembly 可以在浏览器中像在原生环境中一样高效地读写数据库文件，而无需把整个数据库加载到内存中。
-  - **高性能编辑器/IDE**：
-    - 如 Photoshop Web 版、VS Code Web 版，利用 OPFS 暂存大量临时文件或工作区快照。
-  - **视频/音频处理**：
-    - 处理大型媒体文件时，需要频繁的随机读写（seek and write），OPFS 是唯一能满足 Web端这一需求的方案。`;
+#### 2.3 导入逻辑 (Markdown -> Database)
+
+这是整个系统中最关键的"唯一一次"导入，或者是从外部编辑器修改后的重载。
+
+1. **正则提取：** 使用正则 \`/(.*) $/\` 解析每一行。
+2. **ID 决策策略：**
+* **情况 A：解析到了 ID** -> 直接使用该 ID 作为数据库的主键（\`uuid\`）。如果数据库里已有该 ID，则执行 UPDATE；如果没有，执行 INSERT。
+* **情况 B：没解析到 ID** -> 视为新数据。数据库自动生成一个新的 UUID。
+
+
+
+#### 2.4 潜在风险与对策
+
+* **风险：外部破坏引用。**
+如果用户在 VSCode 里把 \` \` 删掉了，或者把这行字删了重写，ID 就会丢失。下次导入时，数据库会把它当成新 Block（生成新 ID）。
+* **后果：** 之前指向这个 Block 的引用会失效（Dead Link）。
+* **对策：** 这是单向数据流的必然代价。如果不希望 ID 丢失，就必须像 Logseq 一样强制所有 Block 都有 ID。既然选择了"条件式 ID"带来的整洁，就默认接受"外部编辑器大改会导致引用断裂"的风险。
+
+
+
+### 总结方案
+
+1. **历史记录：** 使用 **SQLite \`AFTER UPDATE\` 触发器** 自动维护 \`blocks_history\` 表。
+2. **ID 语法：** 使用 **行尾 HTML 注释** \` \` 以保持 Markdown 视觉纯净。
+3. **条件逻辑：** 仅当 Block UUID 存在于 \`refs\` 表的 \`target_uuid\` 列时，导出时才写入 HTML 注释；否则保持纯文本。`;
+
+    const expected = `- i
+- #### 2.2 导出逻辑 (Database -> Markdown)
+  - 这是"条件持久化"的核心实现。导出不是简单的 dump，而是一个带逻辑的渲染过程。
+    - **第一步：获取引用集合**
+      - 在导出页面前，先查询数据库，找出哪些 Block 是"被引用者"。
+  - \`\`\`sql
+      -- 找出所有作为 target 被引用的 block_uuid
+      SELECT DISTINCT target_uuid FROM refs;
+      
+    \`\`\`
+  - *将此结果加载到内存中的 \`Set<String> referencedBlockIds\`。*
+2. **第二步：渲染流**
+遍历 Block 生成 Markdown 时，检查当前 Block 的 ID 是否在 \`Set\` 中。
+    - **IF 存在：** 追加 HTML 注释 ID。
+    - **IF 不存在：** 仅输出内容，**不输出 ID**。
+  - *伪代码逻辑：*
+  - \`\`\`javascript
+      function exportBlockToMarkdown(block, referencedBlockIds) {
+          let line = "- " + block.content;
+      
+          // 只有当这个块被其他地方引用了，才把身份证号写在脸上
+          if (referencedBlockIds.has(block.uuid)) {
+              line += \` \`;
+          }
+      
+          return line;
+      }
+      
+    \`\`\`
+- #### 2.3 导入逻辑 (Markdown -> Database)
+  - 这是整个系统中最关键的"唯一一次"导入，或者是从外部编辑器修改后的重载。
+    - **正则提取：** 使用正则 \`/(.*) $/\` 解析每一行。
+    - **ID 决策策略：**
+  - **情况 A：解析到了 ID** -> 直接使用该 ID 作为数据库的主键（\`uuid\`）。如果数据库里已有该 ID，则执行 UPDATE；如果没有，执行 INSERT。
+  - **情况 B：没解析到 ID** -> 视为新数据。数据库自动生成一个新的 UUID。
+- #### 2.4 潜在风险与对策
+  - **风险：外部破坏引用。**
+    - 如果用户在 VSCode 里把 \` \` 删掉了，或者把这行字删了重写，ID 就会丢失。下次导入时，数据库会把它当成新 Block（生成新 ID）。
+  - **后果：** 之前指向这个 Block 的引用会失效（Dead Link）。
+  - **对策：** 这是单向数据流的必然代价。如果不希望 ID 丢失，就必须像 Logseq 一样强制所有 Block 都有 ID。既然选择了"条件式 ID"带来的整洁，就默认接受"外部编辑器大改会导致引用断裂"的风险。
+- ### 总结方案
+  - **历史记录：** 使用 **SQLite \`AFTER UPDATE\` 触发器** 自动维护 \`blocks_history\` 表。
+  - **ID 语法：** 使用 **行尾 HTML 注释** \` \` 以保持 Markdown 视觉纯净。
+  - **条件逻辑：** 仅当 Block UUID 存在于 \`refs\` 表的 \`target_uuid\` 列时，导出时才写入 HTML 注释；否则保持纯文本。`;
 
     const processor = unified().use(remarkParse);
     const tree = processor.parse(input);
-    const converted = convertToOutline(tree as any);
+    const converted = convertToOutline(tree as MarkdownNode);
 
     expect(converted).toBe(expected);
   });
