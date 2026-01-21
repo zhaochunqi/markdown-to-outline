@@ -1,0 +1,14 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Snapshots > should match snapshot for complex Logseq content 1`] = `
+"# Project Alpha
+- [ ] Define requirements
+  - Meeting with stakeholders
+  - Write draft
+## Development
+  - [ ] Setup repo
+  - [x] Initial commit
+- > Important note for developers
+- Code example:
+  - \`\`\`typescript"
+`;
