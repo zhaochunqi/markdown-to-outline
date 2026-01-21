@@ -171,3 +171,68 @@ additionalBlockquoteTests.forEach((test, index) => {
 });
 
 console.log('=== Additional Blockquote Tests Complete ===');
+
+console.log('\n=== List Parsing Regression Test ===');
+
+// Test case for the list parsing issue with ordered/unordered list pairs
+const listRegressionTestMarkdown = `### 典型应用场景
+
+1. **SQLite in the Browser (WASM)**：
+* 这是目前 OPFS 最著名的用例。通过 OPFS 的同步句柄，SQLite 编译成的 WebAssembly 可以在浏览器中像在原生环境中一样高效地读写数据库文件，而无需把整个数据库加载到内存中。
+
+
+2. **高性能编辑器/IDE**：
+* 如 Photoshop Web 版、VS Code Web 版，利用 OPFS 暂存大量临时文件或工作区快照。
+
+
+3. **视频/音频处理**：
+* 处理大型媒体文件时，需要频繁的随机读写（seek and write），OPFS 是唯一能满足 Web端这一需求的方案。`;
+
+console.log('List regression test input:');
+console.log(listRegressionTestMarkdown);
+console.log();
+
+try {
+  const processor = unified().use(remarkParse);
+  const tree = processor.parse(listRegressionTestMarkdown);
+  const converted = convertToOutline(tree);
+  console.log('List regression test result:');
+  console.log(converted);
+  console.log();
+
+  // Expected result with proper hierarchy
+  const expected = `- ### 典型应用场景
+  - **SQLite in the Browser (WASM)**：
+    - 这是目前 OPFS 最著名的用例。通过 OPFS 的同步句柄，SQLite 编译成的 WebAssembly 可以在浏览器中像在原生环境中一样高效地读写数据库文件，而无需把整个数据库加载到内存中。
+  - **高性能编辑器/IDE**：
+    - 如 Photoshop Web 版、VS Code Web 版，利用 OPFS 暂存大量临时文件或工作区快照。
+  - **视频/音频处理**：
+    - 处理大型媒体文件时，需要频繁的随机读写（seek and write），OPFS 是唯一能满足 Web端这一需求的方案。`;
+
+  const passed = converted === expected;
+  console.log(`List regression test result: ${passed ? '✅ PASSED' : '❌ FAILED'}`);
+
+  if (!passed) {
+    console.log('\nExpected:');
+    console.log(expected);
+    console.log('\nActual:');
+    console.log(converted);
+
+    // Detailed line-by-line comparison
+    console.log('\nDetailed comparison:');
+    const currentLines = converted.split('\n');
+    const expectedLines = expected.split('\n');
+
+    currentLines.forEach((line, index) => {
+      if (expectedLines[index] !== line) {
+        console.log(`Line ${index + 1} mismatch:`);
+        console.log(`  Expected: "${expectedLines[index]}"`);
+        console.log(`  Actual:   "${line}"`);
+      }
+    });
+  }
+} catch (error) {
+  console.error(`List regression test error: ${error}`);
+}
+
+console.log('\n=== List Parsing Regression Test Complete ===');

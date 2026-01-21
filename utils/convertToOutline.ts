@@ -224,11 +224,12 @@ function processChildrenWithHierarchy(
     if (!child || !child.type) continue;
 
     if (child.type === 'heading') {
-      // For headings, calculate depth based on heading level
+      // For headings, map heading levels to outline depths
       const headingLevel = (child as any).depth;
-      lastHeadingDepth = baseDepth + headingLevel - 1;
+      // Map h1->0, h2->1, h3->2, h4->3, etc.
+      lastHeadingDepth = headingLevel - 1;
 
-      const headingResult = convertToOutline(child, lastHeadingDepth, options);
+      const headingResult = convertToOutline(child, 0, options);
       if (headingResult) results.push(headingResult);
     } else if (child.type === 'paragraph') {
       // Look ahead to see if this paragraph is followed by a list
@@ -253,6 +254,58 @@ function processChildrenWithHierarchy(
         const paragraphDepth = lastHeadingDepth > baseDepth ? lastHeadingDepth + 1 : baseDepth;
         const paragraphResult = convertToOutline(child, paragraphDepth, options);
         if (paragraphResult) results.push(paragraphResult);
+      }
+    } else if (child.type === 'list') {
+      // For lists, use the heading depth + 1, but ensure minimum depth for readability
+      let listDepth = lastHeadingDepth > baseDepth ? 1 : baseDepth;
+
+      // Collect consecutive list nodes
+      const consecutiveLists: MarkdownNode[] = [child];
+      while (i + 1 < children.length && children[i + 1].type === 'list') {
+        consecutiveLists.push(children[i + 1]);
+        i++; // Skip the next consecutive list
+      }
+
+      // Process consecutive lists with proper hierarchy
+      // We need to pair ordered lists with their following unordered lists
+      for (let j = 0; j < consecutiveLists.length; j++) {
+        const currentList = consecutiveLists[j];
+        const isOrdered = (currentList as any).ordered;
+        const nextList = j + 1 < consecutiveLists.length ? consecutiveLists[j + 1] : null;
+        const isNextUnordered = nextList && !(nextList as any).ordered;
+
+        if (isOrdered && isNextUnordered) {
+          // This is a paired structure: ordered list + unordered list
+          // Process ordered list items as parent items
+          const orderedItems = (currentList as any).children || [];
+          const unorderedItems = (nextList as any).children || [];
+
+          // Process each ordered item with its corresponding unordered item
+          const maxItems = Math.max(orderedItems.length, unorderedItems.length);
+          for (let k = 0; k < maxItems; k++) {
+            // Process ordered list item (parent)
+            if (k < orderedItems.length) {
+              const orderedItem = convertToOutline(orderedItems[k], listDepth, options);
+              if (orderedItem) results.push(orderedItem);
+            }
+
+            // Process unordered list item as child (with deeper indentation)
+            if (k < unorderedItems.length) {
+              const unorderedItem = convertToOutline(unorderedItems[k], listDepth + 1, options);
+              if (unorderedItem) results.push(unorderedItem);
+            }
+          }
+
+          j++; // Skip the next list since we processed it as a pair
+        } else if (!isOrdered && j === 0) {
+          // First list is unordered, process at current depth
+          const listResult = convertToOutline(currentList, listDepth, options);
+          if (listResult) results.push(listResult);
+        } else if (!isOrdered && j > 0 && !consecutiveLists[j - 1]) {
+          // Unordered list without preceding ordered list
+          const listResult = convertToOutline(currentList, listDepth, options);
+          if (listResult) results.push(listResult);
+        }
       }
     } else {
       // For other non-heading content, indent under the last heading if there is one
