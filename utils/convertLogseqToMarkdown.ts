@@ -33,7 +33,7 @@ export function convertLogseqToMarkdown(
   };
 
   const nodes = parseLogseqOutline(logseqContent, parseOptions);
-  
+
   if (nodes.length === 0) {
     return '';
   }
@@ -50,14 +50,14 @@ function convertNodesToMarkdown(
   options: ConvertToMarkdownOptions
 ): string {
   const results: string[] = [];
-  
+
   for (const node of nodes) {
     const markdown = convertNodeToMarkdown(node, options);
     if (markdown) {
       results.push(markdown);
     }
   }
-  
+
   // Join with double newlines to create proper paragraph separation in Markdown
   return results.join('\n\n');
 }
@@ -71,19 +71,19 @@ function convertNodeToMarkdown(
   parentLevel: number = 0
 ): string {
   const results: string[] = [];
-  
+
   // Process the current node
   const nodeMarkdown = processNodeContent(node, options, parentLevel);
   if (nodeMarkdown) {
     results.push(nodeMarkdown);
   }
-  
+
   // Process children - they should be indented relative to parent
   if (node.children && node.children.length > 0) {
     const childrenMarkdown = node.children
       .map(child => convertNodeToMarkdown(child, options, node.level))
       .filter(Boolean);
-    
+
     if (childrenMarkdown.length > 0) {
       // For children of headings, add them as content under the heading
       if (nodeMarkdown && (nodeMarkdown.startsWith('#') || node.type === 'heading')) {
@@ -94,7 +94,7 @@ function convertNodeToMarkdown(
       }
     }
   }
-  
+
   // Use single newline for better formatting, especially for headings
   return results.join('\n');
 }
@@ -108,11 +108,11 @@ function processNodeContent(
   parentLevel: number
 ): string {
   const { type, content, level } = node;
-  
+
   switch (type) {
     case 'heading':
       return convertHeadingNode(content, level, parentLevel);
-    
+
     case 'todo':
       if (options.convertTodoItems && options.useTaskListFormat) {
         return `- [ ] ${content}`;
@@ -120,7 +120,7 @@ function processNodeContent(
         return `**TODO:** ${content}`;
       }
       return content;
-    
+
     case 'done':
       if (options.convertTodoItems && options.useTaskListFormat) {
         return `- [x] ${content}`;
@@ -128,7 +128,7 @@ function processNodeContent(
         return `**DONE:** ${content}`;
       }
       return content;
-    
+
     case 'bullet':
     default:
       return convertBulletNode(content, level, parentLevel);
@@ -141,17 +141,17 @@ function processNodeContent(
 function convertHeadingNode(content: string, level: number, parentLevel: number): string {
   // Check if content already has heading markers
   const headingMatch = content.match(/^(#{1,6})\s+(.*)$/);
-  
+
   if (headingMatch) {
     // Content already has heading markers, use them
     return content;
   }
-  
+
   // Convert indentation level to heading level
   // Level 0 = H1, Level 1 = H2, etc.
   const headingLevel = Math.min(level + 1, 6); // Max heading level is 6
   const headingMarker = '#'.repeat(headingLevel);
-  
+
   return `${headingMarker} ${content}`;
 }
 
@@ -164,15 +164,15 @@ function convertBulletNode(content: string, level: number, parentLevel: number):
   if (headingMatch) {
     return content; // Return as-is since it's already a proper heading
   }
-  
+
   // Check if this should be converted to a heading based on context
   if (shouldConvertToHeading(content, level)) {
     return convertHeadingNode(content, level, parentLevel);
   }
-  
+
   // Handle special formats within content
   const processedContent = processSpecialFormats(content);
-  
+
   // For nested content, determine if it should be a list item or paragraph
   if (level === 0) {
     // Top-level items that aren't headings become paragraphs
@@ -198,16 +198,16 @@ function shouldConvertToHeading(content: string, level: number): boolean {
  */
 function processSpecialFormats(content: string): string {
   let processed = content;
-  
+
   // Handle code blocks
   processed = processCodeBlocks(processed);
-  
+
   // Handle blockquotes
   processed = processBlockquotes(processed);
-  
+
   // Handle inline code
   processed = processInlineCode(processed);
-  
+
   return processed;
 }
 
@@ -217,7 +217,7 @@ function processSpecialFormats(content: string): string {
 function processCodeBlocks(content: string): string {
   // Handle multi-line code blocks that might be represented in Logseq format
   const codeBlockRegex = /```(\w*)\n([\s\S]*?)\n```/g;
-  
+
   return content.replace(codeBlockRegex, (match, lang, code) => {
     // Clean up the code content and ensure proper formatting
     const cleanCode = code.replace(/^\s{2,}/gm, ''); // Remove excessive indentation
@@ -240,7 +240,7 @@ function processBlockquotes(content: string): string {
     }
     return line;
   });
-  
+
   return processedLines.join('\n');
 }
 
@@ -252,77 +252,28 @@ function processInlineCode(content: string): string {
   return content.replace(/`([^`]+)`/g, '`$1`');
 }
 
-/**
- * Validates the conversion result
- */
-export function validateMarkdownOutput(markdown: string): {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-} {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-  
-  if (!markdown || typeof markdown !== 'string') {
-    errors.push('Output must be a non-empty string');
-    return { isValid: false, errors, warnings };
-  }
-  
-  const lines = markdown.split('\n');
-  
-  // Check for common Markdown formatting issues
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const lineNumber = i + 1;
-    
-    // Check for malformed headings
-    const headingMatch = line.match(/^(#{1,6})\s*(.*)/);
-    if (headingMatch && !headingMatch[2]) {
-      warnings.push(`Line ${lineNumber}: Empty heading detected`);
-    }
-    
-    // Check for malformed code blocks
-    if (line.includes('```') && !line.match(/^```\w*$/)) {
-      const codeBlockMatch = line.match(/```(\w*)(.*)/);
-      if (codeBlockMatch && codeBlockMatch[2].trim()) {
-        warnings.push(`Line ${lineNumber}: Code block should be on separate line`);
-      }
-    }
-    
-    // Check for malformed task lists
-    const taskMatch = line.match(/^(\s*)-\s*\[([ x])\]\s*(.*)/);
-    if (taskMatch && !taskMatch[3]) {
-      warnings.push(`Line ${lineNumber}: Empty task item detected`);
-    }
-  }
-  
-  return {
-    isValid: errors.length === 0,
-    errors,
-    warnings,
-  };
-}
+
 
 /**
  * Utility function to clean up converted Markdown
  */
 export function cleanupMarkdown(markdown: string): string {
   if (!markdown) return '';
-  
+
   // Remove excessive blank lines (more than 2 consecutive)
   let cleaned = markdown.replace(/\n{3,}/g, '\n\n');
-  
+
   // Ensure proper spacing around headings (headings should have blank lines before and after)
   cleaned = cleaned.replace(/^(#{1,6}\s+.+)$/gm, '\n$1\n');
-  
+
   // Clean up list formatting
   cleaned = cleaned.replace(/^(\s*)-\s+$/gm, ''); // Remove empty list items
-  
+
   // Ensure paragraphs are properly separated (but don't add extra spacing if already correct)
   cleaned = cleaned.replace(/([^\n])\n([^\n-#>])/g, '$1\n\n$2');
-  
+
   // Trim whitespace from start and end, but preserve internal structure
   cleaned = cleaned.trim();
-  
+
   return cleaned;
 }

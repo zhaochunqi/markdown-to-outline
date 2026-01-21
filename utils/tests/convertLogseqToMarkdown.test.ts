@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { convertLogseqToMarkdown } from '../convertLogseqToMarkdown';
+import { convertLogseqToMarkdown, cleanupMarkdown } from '../convertLogseqToMarkdown';
 
 describe('convertLogseqToMarkdown', () => {
     it('should return empty string for empty input', () => {
@@ -26,6 +26,14 @@ describe('convertLogseqToMarkdown', () => {
         // Children should be list items
         expect(result).toContain('- Child 1');
         expect(result).toContain('- Child 2');
+    });
+
+
+
+    it('should cleanup markdown', () => {
+        const input = `Paragraph\n\n\n\nNew Paragraph`;
+        const result = cleanupMarkdown(input);
+        expect(result).toBe(`Paragraph\n\nNew Paragraph`);
     });
 
     it('should convert TODO items to task list', () => {
