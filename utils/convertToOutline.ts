@@ -7,6 +7,7 @@ export interface MarkdownNode extends Node {
   lang?: string | null;
   url?: string | null;
   type: string;
+  ordered?: boolean;
 }
 
 interface ConvertOptions {
@@ -127,34 +128,68 @@ export function convertToOutline(
       if (!('children' in node)) {
         throw new Error(`Invalid listItem node: ${JSON.stringify(node)}`);
       }
-      const itemContent = (node.children as MarkdownNode[])
-        .map(child => {
-          if (child.type === 'paragraph') {
-            const content = (child.children as any[])
-              .map(processTextContent)
-              .filter(Boolean)
-              .join('');
-            return content.trim();
+
+      const results: string[] = [];
+      let firstParagraphAdded = false;
+
+      for (const child of node.children as MarkdownNode[]) {
+        if (child.type === 'paragraph') {
+          const content = (child.children as any[])
+            .map(processTextContent)
+            .filter(Boolean)
+            .join('');
+          const trimmedContent = content.trim();
+
+          if (trimmedContent) {
+            if (!firstParagraphAdded) {
+              // First paragraph - process it with the list item
+              let finalContent = trimmedContent;
+
+              if (options.convertToLogseqTodo) {
+                const todoUncheckedRegex = /^\s*\[ \]\s*(.*)/;
+                const matchUnchecked = finalContent.match(todoUncheckedRegex);
+                if (matchUnchecked) {
+                  finalContent = `TODO ${matchUnchecked[1]}`;
+                } else {
+                  const todoCheckedRegex = /^\s*\[x\]\s*(.*)/i;
+                  const matchChecked = finalContent.match(todoCheckedRegex);
+                  if (matchChecked) {
+                    finalContent = `DONE ${matchChecked[1]}`;
+                  }
+                }
+              }
+
+              results.push(`${getIndent(depth)}- ${finalContent}`);
+              firstParagraphAdded = true;
+            } else {
+              // Additional paragraphs - treat as separate bullet points
+              const paragraphResult = convertToOutline(child, depth + 1, options);
+              if (paragraphResult) {
+                results.push(paragraphResult);
+              }
+            }
           }
-          return convertToOutline(child, depth + 1, options);
-        })
-        .filter(Boolean)
-        .join('\n');
-
-      if (options.convertToLogseqTodo) {
-        const todoUncheckedRegex = /^\s*\[ \]\s*(.*)/;
-        const matchUnchecked = itemContent.match(todoUncheckedRegex);
-        if (matchUnchecked) {
-          return `${getIndent(depth)}- TODO ${matchUnchecked[1]}`;
-        }
-
-        const todoCheckedRegex = /^\s*\[x\]\s*(.*)/i;
-        const matchChecked = itemContent.match(todoCheckedRegex);
-        if (matchChecked) {
-          return `${getIndent(depth)}- DONE ${matchChecked[1]}`;
+        } else {
+          // For non-paragraph children (like code blocks), create separate bullet points
+          // If we haven't added the first paragraph yet and this is the first non-paragraph child,
+          // it means there was no paragraph, so just process this child
+          if (!firstParagraphAdded && results.length === 0) {
+            // No paragraph found yet, just process this child as a regular item
+            const childContent = convertToOutline(child, depth, options);
+            if (childContent) {
+              results.push(childContent);
+            }
+          } else {
+            // Add the child content as a separate bullet point at the same level as the first paragraph
+            const childContent = convertToOutline(child, depth, options);
+            if (childContent) {
+              results.push(childContent);
+            }
+          }
         }
       }
-      return `${getIndent(depth)}- ${itemContent}`;
+
+      return results.join('\n');
 
     case 'code':
       if (!('value' in node)) {
@@ -297,6 +332,10 @@ function processChildrenWithHierarchy(
           }
 
           j++; // Skip the next list since we processed it as a pair
+        } else if (isOrdered) {
+          // Single ordered list without following unordered list
+          const listResult = convertToOutline(currentList, listDepth, options);
+          if (listResult) results.push(listResult);
         } else if (!isOrdered && j === 0) {
           // First list is unordered, process at current depth
           const listResult = convertToOutline(currentList, listDepth, options);
