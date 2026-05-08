@@ -1,6 +1,7 @@
 'use client';
 
 import { useMarkdownToOutline } from '@/hooks/useMarkdownToOutline';
+import { OutlinePreview } from '@/components/OutlinePreview';
 import { PanelEditor } from '@/components/PanelEditor';
 import { ServiceWorkerProvider } from '@/components/ServiceWorkerProvider';
 import { Suspense } from 'react';
@@ -18,44 +19,20 @@ function HomeContent() {
   return (
     <>
       <ServiceWorkerProvider />
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        {/* Header */}
-        <header className="sticky top-0 z-10 border-b border-gray-200/50 bg-white/80 backdrop-blur-sm">
-          <div className="mx-auto max-w-7xl px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600">
-                  <svg
-                    className="h-5 w-5 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-gray-900">Markdown → Logseq 大纲</h1>
-                  <p className="text-sm text-gray-500">将 Markdown 转换为 Logseq outline 格式</p>
-                </div>
+      <div className="min-h-screen bg-stone-100 text-stone-950">
+        <header className="border-b border-stone-200 bg-stone-50/90 backdrop-blur-sm">
+          <div className="mx-auto max-w-7xl px-5 py-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">Markdown → Logseq 大纲</h1>
+                <p className="mt-1 text-sm text-stone-600">左侧编辑，右侧预览并复制。</p>
               </div>
-
               <button
                 type="button"
                 onClick={clearAll}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:bg-gray-50 hover:shadow-md"
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-stone-300 bg-white px-4 text-sm font-medium text-stone-700 shadow-sm transition-colors hover:bg-stone-50"
               >
-                <svg
-                  className="mr-2 inline h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <title>清空</title>
                   <path
                     strokeLinecap="round"
@@ -70,11 +47,9 @@ function HomeContent() {
           </div>
         </header>
 
-        {/* Main Content */}
-        <main className="mx-auto max-w-7xl p-6">
-          <div className="grid h-[calc(100vh-140px)] grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Left Panel - Markdown Input */}
-            <div className="overflow-hidden rounded-xl border border-gray-200/50 bg-white shadow-sm">
+        <main className="mx-auto max-w-7xl p-5">
+          <div className="grid min-h-[calc(100vh-132px)] grid-cols-1 gap-5 lg:grid-cols-2">
+            <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
               <PanelEditor
                 title="Markdown 输入"
                 content={markdownContent}
@@ -93,58 +68,16 @@ function HomeContent() {
                 onChange={updateMarkdown}
                 error={error}
                 className="h-full"
-                validationHints={[
-                  '使用 # ## ### 创建不同级别的标题',
-                  '在 # 符号后添加空格',
-                  '使用 - [ ] 创建待办事项',
-                  '使用 - [x] 创建已完成事项',
-                  '代码块需要用 ``` 包围',
-                  '列表项使用 - 或 * 开头',
-                ]}
               />
             </div>
 
-            {/* Right Panel - Logseq Outline Output */}
-            <div className="overflow-hidden rounded-xl border border-gray-200/50 bg-white shadow-sm">
-              <PanelEditor
-                title="Logseq 大纲输出"
+            <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+              <OutlinePreview
                 content={outlineContent}
-                placeholder={`- 转换结果将显示在这里
-  - 自动转换为 Logseq outline 格式
-  - 支持层级结构和 TODO 项目
-- 特点
-  - 实时转换
-  - 保持原始格式结构
-  - 自动处理 TODO/DONE 项目
-
-复制右侧结果即可在 Logseq 中使用！`}
-                onChange={() => {}}
                 className="h-full"
-                validationHints={[
-                  '结果自动生成，无需手动编辑',
-                  '可以直接复制到 Logseq 使用',
-                  '层级结构使用 2 空格缩进',
-                  'TODO 和 DONE 会自动转换',
-                ]}
               />
             </div>
           </div>
-
-          {/* Footer */}
-          <footer className="mt-8 text-center">
-            <div className="inline-flex items-center space-x-2 text-sm text-gray-500">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <title>功能</title>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-              <span>Markdown → Logseq 单向转换</span>
-            </div>
-          </footer>
         </main>
       </div>
     </>
