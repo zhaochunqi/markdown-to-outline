@@ -16,8 +16,6 @@ describe('MarkdownConverter - Complex Mixed Structure', () => {
 
     const result = convertMarkdownToOutline(markdown);
 
-    console.log('Complex structure result:', result);
-
     // Expected correct hierarchy
     expect(result).toBe(dedent`
       - #### 2.3 导入逻辑 (Markdown -> Database)

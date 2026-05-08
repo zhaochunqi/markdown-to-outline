@@ -12,8 +12,6 @@ describe('MarkdownConverter - Ordered List Hierarchy Regression', () => {
 
     const result = convertMarkdownToOutline(markdown);
 
-    console.log('Current result:', result);
-
     // The result should maintain the correct order and hierarchy
     expect(result).toBe(dedent`
       - **正则提取：** 使用正则 \`/(.*) \$/\` 解析每一行。
@@ -29,8 +27,6 @@ describe('MarkdownConverter - Ordered List Hierarchy Regression', () => {
       * Sub item B`;
 
     const result = convertMarkdownToOutline(markdown);
-
-    console.log('Simple case result:', result);
 
     expect(result).toBe(dedent`
       - First item
@@ -48,8 +44,6 @@ describe('MarkdownConverter - Ordered List Hierarchy Regression', () => {
       * Child 2.2`;
 
     const result = convertMarkdownToOutline(markdown);
-
-    console.log('Multiple items result:', result);
 
     expect(result).toBe(dedent`
       - Parent item 1

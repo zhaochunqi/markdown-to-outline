@@ -12,7 +12,7 @@ describe('Converter - Regression Tests', () => {
 
     const expected = dedent`
     - 简言之：
-    - > **"斯普特尼克时刻" = 危机感 + 觉醒 + 全面改革的起点**。`;
+      - > **"斯普特尼克时刻" = 危机感 + 觉醒 + 全面改革的起点**。`;
 
     const processor = unified().use(remarkParse);
     const tree = processor.parse(input);
@@ -72,6 +72,41 @@ describe('Converter - Regression Tests', () => {
           build/edge/content-script.css:424:::highlight(logseq-copilot-highlight) {
         \`\`\`
     - 后续说明保持同级。`;
+
+    const processor = unified().use(remarkParse);
+    const tree = processor.parse(input);
+    const converted = convertToOutline(tree as MarkdownNode);
+
+    expect(converted).toBe(expected);
+  });
+
+  it('should nest a blockquote under an introductory paragraph ending with a colon', () => {
+    const input = dedent`
+    ## 19. 给 CSS/Tailwind 新手的简短心智模型
+
+    可以把这次问题想象成三层：
+
+    第一层，浏览器插件的 content CSS 是“倒进别人网页的一桶 CSS”。只要选择器够宽，它就会影响别人的网页。
+
+    第二层，CSS Modules 只是给你自己的 class 改名，避免 \`.button\`、\`.card\` 这类 class 冲突。它不是 CSS 沙箱。
+
+    第三层，Tailwind 的 \`@apply\` 可以生成局部 class 样式，但 \`@tailwind base\` 会生成基础层样式。基础层里只要有 \`*\`、\`:root\` 这类选择器，就会变成全局影响。
+
+    所以在浏览器插件 content script 中，一个安全原则是：
+
+    > content CSS 里尽量只写插件根节点下面的 class，不写 \`body\`、\`html\`、\`:root\`、\`*\`，也不要轻易使用会生成全局选择器的入口。
+
+    后续说明保持同级。`;
+
+    const expected = dedent`
+    - ## 19. 给 CSS/Tailwind 新手的简短心智模型
+      - 可以把这次问题想象成三层：
+      - 第一层，浏览器插件的 content CSS 是“倒进别人网页的一桶 CSS”。只要选择器够宽，它就会影响别人的网页。
+      - 第二层，CSS Modules 只是给你自己的 class 改名，避免 \`.button\`、\`.card\` 这类 class 冲突。它不是 CSS 沙箱。
+      - 第三层，Tailwind 的 \`@apply\` 可以生成局部 class 样式，但 \`@tailwind base\` 会生成基础层样式。基础层里只要有 \`*\`、\`:root\` 这类选择器，就会变成全局影响。
+      - 所以在浏览器插件 content script 中，一个安全原则是：
+        - > content CSS 里尽量只写插件根节点下面的 class，不写 \`body\`、\`html\`、\`:root\`、\`*\`，也不要轻易使用会生成全局选择器的入口。
+      - 后续说明保持同级。`;
 
     const processor = unified().use(remarkParse);
     const tree = processor.parse(input);

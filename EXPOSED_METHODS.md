@@ -31,7 +31,7 @@ pnpm test-converter "# Hello World\n\nThis is **bold** text."
 ### 在代码中使用
 
 ```typescript
-import { convertMarkdownToOutline, testConvertMarkdown } from './utils/markdownConverter';
+import { convertMarkdownToOutline, testConvertMarkdown } from './utils/markdown-converter';
 import dedent from 'dedent';
 
 const markdown = dedent`

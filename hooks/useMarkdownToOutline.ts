@@ -103,10 +103,6 @@ export function useMarkdownToOutline(
 
         const { content } = matter(markdown);
 
-        if (content.includes('#') && !content.match(/^#+\s/m)) {
-          throw new Error('标题格式不正确，请在 # 符号后添加空格');
-        }
-
         const ast = markdownProcessor.parse(content);
 
         const outlineResult = convertToOutline(ast as unknown as MarkdownNode, 0, {

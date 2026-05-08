@@ -27,7 +27,6 @@ SELECT DISTINCT target_uuid FROM refs;
     const tree = processor.parse(input);
     const converted = convertToOutline(tree as MarkdownNode);
 
-    console.log('Fixed behavior:', converted);
     expect(converted).toContain('- ### **第一步：获取引用集合**');
     expect(converted).toContain('```sql');
     expect(converted).toContain('SELECT DISTINCT target_uuid FROM refs');

@@ -25,7 +25,7 @@ import {
   convertMarkdownToOutline,
   testConvertMarkdown,
   parseMarkdown,
-} from './utils/markdownConverter';
+} from './utils/markdown-converter';
 
 // Basic conversion
 const markdown = '# Title\n\nSome content';
@@ -244,7 +244,7 @@ Run the test suite to verify functionality:
 pnpm test
 
 # Run specific test file
-pnpm vitest run utils/tests/markdownConverter.test.ts
+pnpm vitest run utils/tests/converter/basic.test.ts
 
 # Run with coverage
 pnpm test:coverage

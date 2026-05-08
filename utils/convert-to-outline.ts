@@ -351,7 +351,7 @@ function processChildrenWithHierarchy(
   let firstHeadingEncountered = false;
   let firstHeadingLevel = 0; // Store the level of the first heading for hierarchy normalization
   let nestedContinuationDepth: number | null = null;
-  let pendingCodeBlockDepth: number | null = null;
+  let pendingBlockBodyDepth: number | null = null;
 
   // Performance: Pre-allocate array with estimated size
   results.length = 0;
@@ -380,7 +380,7 @@ function processChildrenWithHierarchy(
       // Ensure minimum depth of 0
       lastHeadingDepth = Math.max(0, normalizedHeadingLevel);
       nestedContinuationDepth = null;
-      pendingCodeBlockDepth = null;
+      pendingBlockBodyDepth = null;
 
       const headingResult = convertToOutline(child, lastHeadingDepth, options);
       if (headingResult) results.push(headingResult);
@@ -428,8 +428,8 @@ function processChildrenWithHierarchy(
 
       nestedContinuationDepth =
         paragraphConversion.followingSiblingDepth ?? nestedContinuationDepth;
-      pendingCodeBlockDepth = paragraphIntroducesChildList(child)
-        ? existingContinuationDepth ?? paragraphDepth + 1
+      pendingBlockBodyDepth = paragraphIntroducesChildList(child)
+        ? (existingContinuationDepth ?? paragraphDepth + 1)
         : null;
     } else if (child.type === 'list') {
       // For lists, use the heading depth + 1, but ensure minimum depth for readability
@@ -479,7 +479,7 @@ function processChildrenWithHierarchy(
         // Process the merged list
         const mergedResult = convertToOutline(mergedList, listDepth, options);
         if (mergedResult) results.push(mergedResult);
-        pendingCodeBlockDepth = listDepth + 1;
+        pendingBlockBodyDepth = listDepth + 1;
 
         // Skip the next unordered list since we've merged it
         i++;
@@ -487,7 +487,7 @@ function processChildrenWithHierarchy(
         // Single list or unordered list, process normally
         const listResult = convertToOutline(child, listDepth, options);
         if (listResult) results.push(listResult);
-        pendingCodeBlockDepth = isOrdered ? listDepth + 1 : nestedContinuationDepth;
+        pendingBlockBodyDepth = isOrdered ? listDepth + 1 : nestedContinuationDepth;
       }
     } else if (child.type === 'thematicBreak') {
       // Thematic breaks should be at the same level as headings, not indented
@@ -502,18 +502,22 @@ function processChildrenWithHierarchy(
       // from being indented under the previous heading
       lastHeadingDepth = -1;
       nestedContinuationDepth = null;
-      pendingCodeBlockDepth = null;
-    } else if (child.type === 'code' && pendingCodeBlockDepth !== null) {
-      const codeResult = convertCodeAsBlockBody(child as CodeNode, pendingCodeBlockDepth);
+      pendingBlockBodyDepth = null;
+    } else if (child.type === 'code' && pendingBlockBodyDepth !== null) {
+      const codeResult = convertCodeAsBlockBody(child as CodeNode, pendingBlockBodyDepth);
       if (codeResult) results.push(codeResult);
-      pendingCodeBlockDepth = null;
+      pendingBlockBodyDepth = null;
+    } else if (child.type === 'blockquote' && pendingBlockBodyDepth !== null) {
+      const blockquoteResult = convertToOutline(child, pendingBlockBodyDepth, options);
+      if (blockquoteResult) results.push(blockquoteResult);
+      pendingBlockBodyDepth = null;
     } else {
       // For other non-heading content, indent under the last heading if there is one
       const contentDepth =
         nestedContinuationDepth ?? (lastHeadingDepth >= 0 ? lastHeadingDepth + 1 : baseDepth);
       const contentResult = convertToOutline(child, contentDepth, options);
       if (contentResult) results.push(contentResult);
-      pendingCodeBlockDepth = null;
+      pendingBlockBodyDepth = null;
     }
   }
 
