@@ -18,7 +18,7 @@ describe('MarkdownConverter - Separators', () => {
       - ## title: Test
       - ---
       - # Document Title
-      - Content here.`;
+        - Content here.`;
 
     expect(result).toBe(expected);
   });
@@ -27,19 +27,19 @@ describe('MarkdownConverter - Separators', () => {
     const markdown = dedent`
       # First Section
       Content 1
-      
+
       ---
-      
+
       # Second Section
       Content 2`;
 
     const result = convertMarkdownToOutline(markdown);
     const expected = dedent`
       - # First Section
-      - Content 1
+        - Content 1
       - ---
       - # Second Section
-      - Content 2`;
+        - Content 2`;
 
     expect(result).toBe(expected);
   });

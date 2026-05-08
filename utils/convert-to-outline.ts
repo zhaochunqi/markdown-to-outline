@@ -114,52 +114,7 @@ export function convertToOutline(
   }
 
   // Performance: Optimize text content processing with early returns and caching
-  const processTextContent = (node: ProcessableNode): string => {
-    switch (node.type) {
-      case 'text':
-        if (!node.value) return '';
-        // Performance: Only check TODO format if conversion is enabled
-        if (options.convertToLogseqTodo) {
-          const todoMatch = node.value.match(/^[\[\s?]\]\s+(.+)$/);
-          if (todoMatch) {
-            return `TODO ${todoMatch[1]}`;
-          }
-        }
-        return node.value;
-
-      case 'link':
-        return node.children?.[0]?.value ? `[${node.children[0].value}](${node.url})` : '';
-
-      case 'linkReference':
-        const linkText = node.children?.[0]?.value || '';
-        const identifier = (node as LinkReferenceNode).identifier || '';
-        return `[${linkText}][${identifier}]`;
-
-      case 'emphasis':
-        if (!node.children) return '';
-        return `*${node.children.map(processTextContent).join('')}*`;
-
-      case 'strong':
-        if (!node.children) return '';
-        return `**${node.children.map(processTextContent).join('')}**`;
-
-      case 'inlineCode':
-        return `\`${node.value || ''}\``;
-
-      case 'code':
-        return `${node.lang || ''}${node.value || ''}`;
-
-      case 'html':
-        // Handle HTML break tags to preserve line structure
-        if (node.value === '<br>' || node.value === '<br/>') {
-          return '\n';
-        }
-        return '';
-
-      default:
-        return '';
-    }
-  };
+  const processTextContent = (node: ProcessableNode): string => formatTextContent(node, options);
 
   switch (node.type) {
     case 'yaml':
@@ -395,6 +350,8 @@ function processChildrenWithHierarchy(
   let lastHeadingDepth = -1; // Start with -1 so first heading at level 1 becomes depth 0
   let firstHeadingEncountered = false;
   let firstHeadingLevel = 0; // Store the level of the first heading for hierarchy normalization
+  let nestedContinuationDepth: number | null = null;
+  let pendingCodeBlockDepth: number | null = null;
 
   // Performance: Pre-allocate array with estimated size
   results.length = 0;
@@ -422,9 +379,26 @@ function processChildrenWithHierarchy(
 
       // Ensure minimum depth of 0
       lastHeadingDepth = Math.max(0, normalizedHeadingLevel);
+      nestedContinuationDepth = null;
+      pendingCodeBlockDepth = null;
 
       const headingResult = convertToOutline(child, lastHeadingDepth, options);
       if (headingResult) results.push(headingResult);
+
+      // Check if this heading follows a thematicBreak and looks like frontmatter (key: value format)
+      // If so, we need to insert a trailing thematicBreak to preserve the original structure
+      if (i > 0 && children[i - 1].type === 'thematicBreak') {
+        const headingText = (child.children as ProcessableNode[])
+          ?.map((n: ProcessableNode) => (n.type === 'text' ? n.value : ''))
+          .join('')
+          .trim();
+
+        const frontmatterPattern = /^[a-zA-Z_][a-zA-Z0-9_-]*:\s*.+/;
+        if (headingText && frontmatterPattern.test(headingText) && !headingText.startsWith('#')) {
+          const thematicResult = `${getIndent(baseDepth)}- ---`;
+          results.push(thematicResult);
+        }
+      }
     } else if (child.type === 'paragraph') {
       // Regular paragraph processing
       // If this paragraph follows a heading, indent it under the heading
@@ -443,11 +417,29 @@ function processChildrenWithHierarchy(
         paragraphDepth = lastHeadingDepth + 1;
       }
 
-      const paragraphResult = convertToOutline(child, paragraphDepth, options);
+      if (nestedContinuationDepth !== null) {
+        paragraphDepth = nestedContinuationDepth;
+      }
+
+      const paragraphConversion = convertParagraphForHierarchy(child, paragraphDepth, options);
+      const paragraphResult = paragraphConversion.result;
       if (paragraphResult) results.push(paragraphResult);
+
+      nestedContinuationDepth =
+        paragraphConversion.followingSiblingDepth ?? nestedContinuationDepth;
+      pendingCodeBlockDepth =
+        nestedContinuationDepth !== null && paragraphIntroducesChildList(child)
+          ? nestedContinuationDepth
+          : null;
     } else if (child.type === 'list') {
       // For lists, use the heading depth + 1, but ensure minimum depth for readability
-      let listDepth = lastHeadingDepth >= 0 ? lastHeadingDepth + 1 : baseDepth;
+      let listDepth =
+        nestedContinuationDepth ?? (lastHeadingDepth >= 0 ? lastHeadingDepth + 1 : baseDepth);
+      const prevElement = i > 0 ? children[i - 1] : null;
+
+      if (prevElement?.type === 'paragraph' && paragraphIntroducesChildList(prevElement)) {
+        listDepth += 1;
+      }
 
       const isOrdered = (child as ListNode).ordered;
 
@@ -487,6 +479,7 @@ function processChildrenWithHierarchy(
         // Process the merged list
         const mergedResult = convertToOutline(mergedList, listDepth, options);
         if (mergedResult) results.push(mergedResult);
+        pendingCodeBlockDepth = listDepth + 1;
 
         // Skip the next unordered list since we've merged it
         i++;
@@ -494,6 +487,7 @@ function processChildrenWithHierarchy(
         // Single list or unordered list, process normally
         const listResult = convertToOutline(child, listDepth, options);
         if (listResult) results.push(listResult);
+        pendingCodeBlockDepth = isOrdered ? listDepth + 1 : nestedContinuationDepth;
       }
     } else if (child.type === 'thematicBreak') {
       // Thematic breaks should be at the same level as headings, not indented
@@ -507,14 +501,165 @@ function processChildrenWithHierarchy(
       // Reset the heading depth after a thematic break to prevent subsequent paragraphs
       // from being indented under the previous heading
       lastHeadingDepth = -1;
+      nestedContinuationDepth = null;
+      pendingCodeBlockDepth = null;
+    } else if (child.type === 'code' && pendingCodeBlockDepth !== null) {
+      const codeResult = convertCodeAsBlockBody(child as CodeNode, pendingCodeBlockDepth);
+      if (codeResult) results.push(codeResult);
+      pendingCodeBlockDepth = null;
     } else {
       // For other non-heading content, indent under the last heading if there is one
-      const contentDepth = lastHeadingDepth >= 0 ? lastHeadingDepth + 1 : baseDepth;
+      const contentDepth =
+        nestedContinuationDepth ?? (lastHeadingDepth >= 0 ? lastHeadingDepth + 1 : baseDepth);
       const contentResult = convertToOutline(child, contentDepth, options);
       if (contentResult) results.push(contentResult);
+      pendingCodeBlockDepth = null;
     }
   }
 
   // Performance: Use join directly instead of filter then join
   return results.join('\n');
+}
+
+function paragraphIntroducesChildList(node: MarkdownNode): boolean {
+  if (node.type !== 'paragraph' || !('children' in node)) {
+    return false;
+  }
+
+  const content = (node.children as ProcessableNode[]).map(getPlainTextContent).join('').trim();
+  return content.endsWith(':') || content.endsWith('：');
+}
+
+function getPlainTextContent(node: ProcessableNode): string {
+  switch (node.type) {
+    case 'text':
+      return node.value || '';
+
+    case 'link':
+    case 'linkReference':
+      return node.children?.map(child => child.value || '').join('') || '';
+
+    case 'emphasis':
+    case 'strong':
+      return (
+        node.children?.map(child => getPlainTextContent(child as ProcessableNode)).join('') || ''
+      );
+
+    case 'inlineCode':
+      return node.value || '';
+
+    default:
+      return '';
+  }
+}
+
+function formatTextContent(node: ProcessableNode, options: ConvertOptions): string {
+  switch (node.type) {
+    case 'text':
+      if (!node.value) return '';
+      // Performance: Only check TODO format if conversion is enabled
+      if (options.convertToLogseqTodo) {
+        const todoMatch = node.value.match(/^[\[\s?]\]\s+(.+)$/);
+        if (todoMatch) {
+          return `TODO ${todoMatch[1]}`;
+        }
+      }
+      return node.value;
+
+    case 'link':
+      return node.children?.[0]?.value ? `[${node.children[0].value}](${node.url})` : '';
+
+    case 'linkReference':
+      const linkText = node.children?.[0]?.value || '';
+      const identifier = (node as LinkReferenceNode).identifier || '';
+      return `[${linkText}][${identifier}]`;
+
+    case 'emphasis':
+      if (!node.children) return '';
+      return `*${node.children.map(child => formatTextContent(child as ProcessableNode, options)).join('')}*`;
+
+    case 'strong':
+      if (!node.children) return '';
+      return `**${node.children.map(child => formatTextContent(child as ProcessableNode, options)).join('')}**`;
+
+    case 'inlineCode':
+      return `\`${node.value || ''}\``;
+
+    case 'code':
+      return `${node.lang || ''}${node.value || ''}`;
+
+    case 'html':
+      // Handle HTML break tags to preserve line structure
+      if (node.value === '<br>' || node.value === '<br/>') {
+        return '\n';
+      }
+      return '';
+
+    default:
+      return '';
+  }
+}
+
+function convertParagraphForHierarchy(
+  node: MarkdownNode,
+  depth: number,
+  options: ConvertOptions
+): { result: string; followingSiblingDepth?: number } {
+  if (node.type !== 'paragraph' || !('children' in node)) {
+    return { result: convertToOutline(node, depth, options) };
+  }
+
+  const paragraphContent = (node.children as ProcessableNode[])
+    .map(child => formatTextContent(child, options))
+    .filter(Boolean)
+    .join('');
+  const trimmedContent = paragraphContent.trim();
+  if (!trimmedContent) return { result: '' };
+
+  const parts = trimmedContent
+    .split('\n')
+    .map(part => part.trim())
+    .filter(Boolean);
+
+  if (!parts.some(part => /^\d+\.\s+/.test(part))) {
+    return { result: convertToOutline(node, depth, options) };
+  }
+
+  const results: string[] = [];
+  let continuationDepth: number | null = null;
+  let followingSiblingDepth: number | undefined;
+
+  for (const part of parts) {
+    const orderedItemMatch = part.match(/^\d+\.\s+(.+)$/);
+
+    if (orderedItemMatch) {
+      results.push(`${getIndent(depth)}- ${orderedItemMatch[1]}`);
+      continuationDepth = depth + 1;
+      followingSiblingDepth = continuationDepth;
+      continue;
+    }
+
+    if (continuationDepth !== null) {
+      results.push(`${getIndent(continuationDepth)}- ${part}`);
+      followingSiblingDepth = continuationDepth + 1;
+    } else {
+      results.push(`${getIndent(depth)}- ${part}`);
+    }
+  }
+
+  return { result: results.join('\n'), followingSiblingDepth };
+}
+
+function convertCodeAsBlockBody(node: CodeNode, depth: number): string {
+  const codeValue = node.value || '';
+  const codeLang = node.lang || '';
+
+  if (!codeValue) {
+    return `${getIndent(depth)}-\n${getIndent(depth + 1)}\`\`\`${codeLang}\n${getIndent(depth + 1)}\`\`\``;
+  }
+
+  const lines = codeValue.split('\n');
+  const baseIndent = getIndent(depth + 2);
+  const indentedLines = lines.map((line: string) => `${baseIndent}${line}`);
+  return `${getIndent(depth)}-\n${getIndent(depth + 1)}\`\`\`${codeLang}\n${indentedLines.join('\n')}\n${getIndent(depth + 1)}\`\`\``;
 }
