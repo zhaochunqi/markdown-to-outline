@@ -51,6 +51,35 @@ describe('Converter - Regression Tests', () => {
     expect(converted).toBe(expected);
   });
 
+  it('should nest a code block under an introductory paragraph ending with a colon', () => {
+    const input = dedent`
+    结果只命中：
+
+    \`\`\`text
+    build/firefox/content-script.css:424:::highlight(logseq-copilot-highlight) {
+    build/chrome/content-script.css:424:::highlight(logseq-copilot-highlight) {
+    build/edge/content-script.css:424:::highlight(logseq-copilot-highlight) {
+    \`\`\`
+
+    后续说明保持同级。`;
+
+    const expected = dedent`
+    - 结果只命中：
+      -
+        \`\`\`text
+          build/firefox/content-script.css:424:::highlight(logseq-copilot-highlight) {
+          build/chrome/content-script.css:424:::highlight(logseq-copilot-highlight) {
+          build/edge/content-script.css:424:::highlight(logseq-copilot-highlight) {
+        \`\`\`
+    - 后续说明保持同级。`;
+
+    const processor = unified().use(remarkParse);
+    const tree = processor.parse(input);
+    const converted = convertToOutline(tree as MarkdownNode);
+
+    expect(converted).toBe(expected);
+  });
+
   it('should handle heading hierarchy correctly (2.3 and 2.4 issue)', () => {
     const input = dedent`
 

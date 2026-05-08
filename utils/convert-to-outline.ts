@@ -404,6 +404,7 @@ function processChildrenWithHierarchy(
       // If this paragraph follows a heading, indent it under the heading
       // Otherwise, use base depth
       let paragraphDepth = baseDepth;
+      const existingContinuationDepth = nestedContinuationDepth;
 
       // Check if the previous element was a thematic break, which indicates a section break
       const prevElement = i > 0 ? children[i - 1] : null;
@@ -427,10 +428,9 @@ function processChildrenWithHierarchy(
 
       nestedContinuationDepth =
         paragraphConversion.followingSiblingDepth ?? nestedContinuationDepth;
-      pendingCodeBlockDepth =
-        nestedContinuationDepth !== null && paragraphIntroducesChildList(child)
-          ? nestedContinuationDepth
-          : null;
+      pendingCodeBlockDepth = paragraphIntroducesChildList(child)
+        ? existingContinuationDepth ?? paragraphDepth + 1
+        : null;
     } else if (child.type === 'list') {
       // For lists, use the heading depth + 1, but ensure minimum depth for readability
       let listDepth =
