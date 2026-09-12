@@ -1,6 +1,6 @@
 /**
  * Simple CLI to test markdown conversion without browser
- * Usage: pnpm run test-converter "your markdown here"
+ * Usage: npm run test-converter "your markdown here"
  */
 
 import dedent from 'dedent';

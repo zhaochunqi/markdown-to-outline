@@ -61,19 +61,19 @@
 
 ### 开发环境
 ```bash
-pnpm dev
+npm run dev
 ```
 
 ### 生产构建
 ```bash
-pnpm build
-pnpm start
+npm run build
+npm start
 ```
 
 ### 测试 Service Worker
 Service Worker 只在生产环境生效，开发环境需要：
-1. 构建生产版本：`pnpm build`
-2. 启动生产服务器：`pnpm start`
+1. 构建生产版本：`npm run build`
+2. 启动生产服务器：`npm start`
 3. 访问 `http://localhost:3000`
 
 ### 测试离线功能

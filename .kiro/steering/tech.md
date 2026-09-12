@@ -34,16 +34,16 @@
 
 ### 开发
 ```bash
-pnpm dev          # 启动开发服务器
-pnpm build        # 构建生产版本
-pnpm start        # 启动生产服务器
-pnpm lint         # 运行 ESLint
+npm run dev          # 启动开发服务器
+npm run build        # 构建生产版本
+npm start        # 启动生产服务器
+npm run lint         # 运行 ESLint
 ```
 
 ### 包管理
 ```bash
-pnpm install      # 安装依赖
-pnpm add <pkg>    # 添加新依赖
+npm install      # 安装依赖
+npm install <pkg>    # 添加新依赖
 ```
 
 ## 性能优化

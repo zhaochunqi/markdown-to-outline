@@ -117,10 +117,10 @@
 ### 1. 测试 Service Worker
 ```bash
 # 构建生产版本
-pnpm build
+npm run build
 
 # 启动生产服务器
-pnpm start
+npm start
 
 # 访问 http://localhost:3000
 ```
@@ -142,8 +142,8 @@ pnpm start
 
 ### 4. 测试更新提示
 1. 修改代码
-2. 重新构建：`pnpm build`
-3. 重启服务器：`pnpm start`
+2. 重新构建：`npm run build`
+3. 重启服务器：`npm start`
 4. 刷新页面
 5. 应该看到右下角的更新提示
 

@@ -12,28 +12,28 @@ A Next.js 14 application for converting Markdown to Logseq outline format with o
 
 ```bash
 # Development
-pnpm dev              # Start development server at http://localhost:3000
+npm run dev           # Start development server at http://localhost:3000
 
 # Build
-pnpm build            # Build for production (output: standalone)
-pnpm start            # Start production server (use after build)
+npm run build         # Build for production (output: standalone)
+npm start             # Start production server (use after build)
 
 # Linting
-pnpm lint             # Run Next.js linting
+npm run lint          # Run Next.js linting
 
 # Testing
-pnpm test             # Run tests with Vitest (watch mode by default)
-pnpm vitest run        # Run tests once and exit
-pnpm vitest run --coverage    # Run tests with coverage report
+npm test              # Run tests with Vitest (watch mode by default)
+npx vitest run        # Run tests once and exit
+npx vitest run --coverage    # Run tests with coverage report
 
 # Run single test file
-pnpm vitest run utils/tests/convertToOutline.test.ts
+npx vitest run utils/tests/convertToOutline.test.ts
 
 # Run single test case (using test name filter)
-pnpm vitest run -t "should convert simple paragraph"
+npx vitest run -t "should convert simple paragraph"
 
 # Prepare git hooks
-pnpm prepare          # Install husky git hooks
+npm run prepare       # Install husky git hooks
 ```
 
 ### Testing Framework
@@ -198,18 +198,18 @@ try {
 2. Create custom hook in `hooks/` if state/logic needed
 3. Create components in `components/`
 4. Add tests in `utils/tests/` or co-located
-5. Run `pnpm test` to verify
-6. Run `pnpm build` to ensure production build works
+5. Run `npm test` to verify
+6. Run `npm run build` to ensure production build works
 
 ### Debugging Tests
 
 ```bash
-pnpm vitest run utils/tests/file.test.ts --reporter=verbose
+npx vitest run utils/tests/file.test.ts --reporter=verbose
 ```
 
 ### Updating Dependencies
 
 ```bash
-pnpm update           # Update to latest within semver
-pnpm add package@ver  # Add specific version
+npm update           # Update to latest within semver
+npm install package@ver  # Add specific version
 ```

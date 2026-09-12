@@ -104,7 +104,7 @@ check(
 check(
   '生产构建存在',
   () => fs.existsSync(path.join(__dirname, '../.next')),
-  '请先运行 pnpm build'
+  '请先运行 npm run build'
 );
 
 console.log('\n' + '='.repeat(50));
@@ -116,8 +116,8 @@ console.log('='.repeat(50));
 if (failed === 0) {
   console.log('\n🎉 所有优化配置正确！');
   console.log('\n下一步：');
-  console.log('1. 运行 pnpm build 构建生产版本');
-  console.log('2. 运行 PORT=3001 pnpm start 启动服务器');
+  console.log('1. 运行 npm run build 构建生产版本');
+  console.log('2. 运行 PORT=3001 npm start 启动服务器');
   console.log('3. 访问 http://localhost:3001 测试');
   console.log('4. 参考 TEST_GUIDE.md 进行完整测试');
   process.exit(0);

@@ -4,12 +4,12 @@
 
 ### 1. 构建生产版本
 ```bash
-pnpm build
+npm run build
 ```
 
 ### 2. 启动生产服务器
 ```bash
-PORT=3001 pnpm start
+PORT=3001 npm start
 ```
 
 或者使用 standalone 模式：
@@ -89,8 +89,8 @@ node .next/standalone/server.js
 **步骤：**
 1. 访问 http://localhost:3001
 2. 修改任意代码文件（如 app/page.tsx）
-3. 重新构建：`pnpm build`
-4. 重启服务器：`PORT=3001 pnpm start`
+3. 重新构建：`npm run build`
+4. 重启服务器：`PORT=3001 npm start`
 5. 刷新浏览器页面
 
 **预期结果：**
@@ -182,7 +182,7 @@ node .next/standalone/server.js
 
 ### Q: Service Worker 没有注册？
 **A:** 确保：
-1. 使用生产构建（`pnpm build`）
+1. 使用生产构建（`npm run build`）
 2. 使用 HTTP 或 HTTPS（不是 file://）
 3. 浏览器支持 Service Worker
 

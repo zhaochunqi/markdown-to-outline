@@ -10,7 +10,7 @@
     "test": "vitest",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test-converter": "pnpx tsx scripts/test-converter.ts",
+    "test-converter": "npx tsx scripts/test-converter.ts",
     "prepare": "husky"
   },
   "dependencies": {

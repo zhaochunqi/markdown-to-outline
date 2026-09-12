@@ -10,10 +10,10 @@ The easiest way to test markdown conversion is via the CLI script:
 
 ```bash
 # Test with sample markdown
-pnpm test-converter
+npm run test-converter
 
 # Test with your own markdown
-pnpm test-converter "# Hello World\n\nThis is **bold** text."
+npm run test-converter "# Hello World\n\nThis is **bold** text."
 ```
 
 ### 2. Using in Your Code
@@ -241,11 +241,11 @@ Run the test suite to verify functionality:
 
 ```bash
 # Run all tests
-pnpm test
+npm test
 
 # Run specific test file
-pnpm vitest run utils/tests/converter/basic.test.ts
+npx vitest run utils/tests/converter/basic.test.ts
 
 # Run with coverage
-pnpm test:coverage
+npm run test:coverage
 ```

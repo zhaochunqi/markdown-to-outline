@@ -27,13 +27,13 @@ This project is a Next.js application that converts Markdown content to an outli
 2. Install dependencies:
 
    ```
-   pnpm install
+   npm ci
    ```
 
 3. Run the development server:
 
    ```
-   pnpm run dev
+   npm run dev
    ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.

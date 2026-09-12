@@ -22,10 +22,10 @@
 
 ```bash
 # 使用示例 markdown
-pnpm test-converter
+npm run test-converter
 
 # 测试自己的 markdown
-pnpm test-converter "# Hello World\n\nThis is **bold** text."
+npm run test-converter "# Hello World\n\nThis is **bold** text."
 ```
 
 ### 在代码中使用
