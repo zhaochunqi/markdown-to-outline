@@ -46,23 +46,3 @@ jobs:
           provenance: false
           build-args: |
             LIBZIP_DEV=libzip-dev
-
-      - name: ntfy-success-notifications
-        uses: niniyas/ntfy-action@master
-        if: success()
-        with:
-          url: '${{ secrets.NTFY_URL }}'
-          topic: status
-          headers: '{"authorization": "Bearer ${{ secrets.NTFY_TOKEN }}"}'
-          tags: +1,partying_face,tada
-          details: Image Build Finished.
-
-      - name: ntfy-failed-notifications
-        uses: niniyas/ntfy-action@master
-        if: failure()
-        with:
-          url: '${{ secrets.NTFY_URL }}'
-          topic: status
-          headers: '{"authorization": "Bearer ${{ secrets.NTFY_TOKEN }}"}'
-          tags: +1,partying_face,failed
-          details: Image build failed!
