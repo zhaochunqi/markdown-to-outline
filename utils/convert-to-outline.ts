@@ -82,13 +82,7 @@ interface HeadingNode extends MarkdownNode {
 }
 
 type ProcessableNode =
-  | TextNode
-  | LinkNode
-  | LinkReferenceNode
-  | EmphasisNode
-  | InlineCodeNode
-  | CodeNode
-  | HtmlNode;
+  TextNode | LinkNode | LinkReferenceNode | EmphasisNode | InlineCodeNode | CodeNode | HtmlNode;
 
 // Performance: Cache indent strings to avoid repeated string creation
 const indentCache = new Map<number, string>();

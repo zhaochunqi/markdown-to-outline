@@ -3,6 +3,7 @@
 ## 概述
 
 本设计文档描述了对现有 Markdown 到大纲转换器的改进，主要包括：
+
 1. 修复层次缩进问题，确保嵌套内容正确缩进
 2. 移除 Logseq TODO 转换选项，使其成为默认行为
 3. 实现双向转换功能，支持 Markdown ↔ Logseq 大纲格式互转
@@ -21,7 +22,7 @@ graph TB
     C --> F[层次处理器]
     D --> G[大纲解析器]
     D --> H[Markdown 生成器]
-    
+
     subgraph "数据流"
         I[Markdown 输入] --> C
         C --> J[Logseq 大纲输出]
@@ -57,36 +58,30 @@ interface BidirectionalConverterResult {
 
 export function useBidirectionalConverter(
   options: BidirectionalConverterOptions
-): BidirectionalConverterResult
+): BidirectionalConverterResult;
 ```
 
 ### 2. 转换工具函数
 
 ```typescript
 // 改进的 Markdown 到 Logseq 转换
-export function convertMarkdownToLogseq(
-  markdown: string, 
-  options: ConvertToLogseqOptions
-): string
+export function convertMarkdownToLogseq(markdown: string, options: ConvertToLogseqOptions): string;
 
 // 新增的 Logseq 到 Markdown 转换
 export function convertLogseqToMarkdown(
   logseqContent: string,
   options: ConvertToMarkdownOptions
-): string
+): string;
 
 // 层次结构处理器
-export function processHierarchy(
-  nodes: MarkdownNode[],
-  depth: number
-): string
+export function processHierarchy(nodes: MarkdownNode[], depth: number): string;
 ```
 
 ### 3. UI 组件
 
 ```typescript
 // 主页面组件
-export default function Home(): JSX.Element
+export default function Home(): JSX.Element;
 
 // 分栏编辑器组件
 interface PanelEditorProps {
@@ -97,7 +92,7 @@ interface PanelEditorProps {
   error?: string | null;
 }
 
-export function PanelEditor(props: PanelEditorProps): JSX.Element
+export function PanelEditor(props: PanelEditorProps): JSX.Element;
 ```
 
 ## 数据模型
@@ -149,7 +144,7 @@ enum ConversionErrorType {
   PARSE_ERROR = 'parse_error',
   FORMAT_ERROR = 'format_error',
   HIERARCHY_ERROR = 'hierarchy_error',
-  UNKNOWN_ERROR = 'unknown_error'
+  UNKNOWN_ERROR = 'unknown_error',
 }
 
 interface ConversionError {
@@ -202,11 +197,11 @@ describe('层次结构转换', () => {
     const markdown = `## 我擅长的技能
 ### 写作
 我热爱文字创作，具备不错的写作与书面表达能力。`;
-    
+
     const expected = `- ## 我擅长的技能
   - ### 写作
     - 我热爱文字创作，具备不错的写作与书面表达能力。`;
-    
+
     expect(convertMarkdownToLogseq(markdown, options)).toBe(expected);
   });
 });
@@ -219,6 +214,7 @@ describe('层次结构转换', () => {
 当前问题：所有内容都在同一层级，没有体现父子关系。
 
 解决方案：
+
 1. 在 AST 遍历时跟踪当前的层次深度
 2. 根据标题级别动态调整后续内容的缩进
 3. 维护一个层次栈来管理嵌套关系
@@ -226,11 +222,13 @@ describe('层次结构转换', () => {
 ### 双向转换实现
 
 #### Markdown → Logseq
+
 - 保持现有逻辑，但修复层次问题
 - 默认启用 TODO 转换
 - 改进缩进算法
 
 #### Logseq → Markdown
+
 - 解析缩进级别确定标题层级
 - 将 TODO/DONE 转换为 Markdown 任务列表
 - 处理特殊格式（代码块、引用等）

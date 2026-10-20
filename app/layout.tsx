@@ -32,9 +32,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
       </head>
       <body>
-        <ErrorBoundary>
-          {children}
-        </ErrorBoundary>
+        <ErrorBoundary>{children}</ErrorBoundary>
       </body>
     </html>
   );

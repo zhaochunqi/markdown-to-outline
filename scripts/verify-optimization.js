@@ -45,9 +45,11 @@ check(
   'Next.js 配置包含优化',
   () => {
     const config = fs.readFileSync(path.join(__dirname, '../next.config.mjs'), 'utf8');
-    return config.includes('compress: true') && 
-           config.includes('swcMinify: true') &&
-           config.includes('splitChunks');
+    return (
+      config.includes('compress: true') &&
+      config.includes('swcMinify: true') &&
+      config.includes('splitChunks')
+    );
   },
   'next.config.mjs 缺少关键优化配置'
 );

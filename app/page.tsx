@@ -72,10 +72,7 @@ function HomeContent() {
             </div>
 
             <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-              <OutlinePreview
-                content={outlineContent}
-                className="h-full"
-              />
+              <OutlinePreview content={outlineContent} className="h-full" />
             </div>
           </div>
         </main>

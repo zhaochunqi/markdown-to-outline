@@ -1,1 +1,5 @@
 pnpm-lock.yaml
+package-lock.json
+.next/
+out/
+coverage/

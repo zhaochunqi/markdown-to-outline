@@ -28,7 +28,10 @@ function parseOutline(content: string): OutlineItem[] {
     const line = lines[index];
     const leadingSpaces = line.match(/^\s*/)?.[0].length ?? 0;
     const depth = Math.max(0, Math.floor(leadingSpaces / 2));
-    const text = line.trim().replace(/^[-*]\s*/, '').trim();
+    const text = line
+      .trim()
+      .replace(/^[-*]\s*/, '')
+      .trim();
 
     if (!text) continue;
 
