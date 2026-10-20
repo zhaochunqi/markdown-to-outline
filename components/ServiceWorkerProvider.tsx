@@ -17,7 +17,7 @@ export function ServiceWorkerProvider() {
   if (!showUpdatePrompt) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 max-w-sm animate-in slide-in-from-bottom-4">
+    <div className="fixed bottom-6 right-6 z-50 max-w-sm animate-slide-in-bottom">
       <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">

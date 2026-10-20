@@ -39,9 +39,11 @@ npm run prepare       # Install husky git hooks
 ### Testing Framework
 
 - **Vitest** for unit/integration tests
-- **@testing-library/react** for React component testing
 - **jsdom** for DOM environment
 - **@vitest/coverage-v8** for coverage reporting
+
+No React component tests exist yet, so `@testing-library/react` is **not** installed.
+Install it (`npm i -D @testing-library/react`) before adding a `*.test.tsx`.
 
 ### Test File Patterns
 
@@ -185,8 +187,8 @@ try {
 
 - **React 18** with TypeScript
 - **Next.js 14** (App Router, standalone output)
-- **Radix UI** for accessible components
-- **Tailwind CSS** for styling
+- **Radix UI Slot** (`@radix-ui/react-slot`, used by `components/ui/button.tsx`)
+- **Tailwind CSS** for styling (plain utility classes; shadcn tokens in `app/globals.css`)
 - **Vitest** for testing
 - **unified/remark** for Markdown parsing
 
