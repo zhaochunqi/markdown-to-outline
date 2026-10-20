@@ -8,6 +8,12 @@
       "matchUpdateTypes": ["major"],
       "automerge": true,
       "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "TypeScript 的 major 先禁用：TS 7 是 Go 原生移植，包里已不提供 compiler API（typescript/lib/typescript.js 不再存在也不在 exports 里，根导出只有 version/versionMajorMinor），而 next 14.2 的 verifyTypeScriptSetup 靠 require.resolve('typescript/lib/typescript.js') 判「有没有装 TS」，解析失败就 FatalError，eslint-config-next/@typescript-eslint 8 同样拿不到 API。等 next 升到支持 TS7 的版本再放开。",
+      "matchPackageNames": ["typescript"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     }
   ]
 }
