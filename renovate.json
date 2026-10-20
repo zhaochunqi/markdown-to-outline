@@ -1,4 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>zhaochunqi/renovate-config"]
+  "extends": ["github>zhaochunqi/renovate-config"],
+  "packageRules": [
+    {
+      "description": "github-actions 的 major 不改业务代码语义，坏了下一次 workflow run 立刻红；npm 的 major（tailwind v4 / eslint v10 / typescript v7）继续留人工审。仓库自己的 packageRules 排在 preset 之后，只对本包生效，不去动共享 preset。",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["major"],
+      "automerge": true,
+      "minimumReleaseAge": "7 days"
+    }
+  ]
 }

@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    # 单个 job 跑完全部校验：check run 名字固定为 test，
+    # Renovate 的 automerge 才有一个确定的 check 可以等。
+    # 拆成多个 job 时若某个被 path 过滤跳过，Renovate 会一直等不到它。
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          # 与 Dockerfile 里的 node:20 保持一致
+          node-version: 20
+          cache: npm
+
+      # .npmrc 里是 legacy-peer-deps=true，npm ci 会照读，不要在这里额外加参数
+      - run: npm ci
+
+      - run: npm run lint
+
+      # npm test 是 watch 模式，CI 里必须用 vitest run
+      - run: npx vitest run
+
+      - run: npm run build
