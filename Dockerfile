@@ -19,8 +19,6 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# This will do the trick, use the corresponding env file for each environment.
-# COPY .env.production.sample .env.production
 RUN npm run build
 
 # 3. Production image, copy all the files and run next
@@ -46,5 +44,4 @@ EXPOSE 3000
 
 ENV PORT=3000
 
-# 很奇怪哎
 CMD ["node", "server.js", "--hostname", "0.0.0.0"]
