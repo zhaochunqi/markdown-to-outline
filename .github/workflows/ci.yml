@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           # 与 Dockerfile 里的 node:20 保持一致
-          node-version: 20.20.2
+          node-version: 26.12.1
           cache: npm
 
       # .npmrc 里是 legacy-peer-deps=true，npm ci 会照读，不要在这里额外加参数
