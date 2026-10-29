@@ -48,10 +48,10 @@ This project is a Next.js application that converts Markdown content to an outli
 
 ## Technologies Used
 
-- Next.js
-- React
+- Next.js 16 (App Router, Turbopack)
+- React 19
 - TypeScript
-- Tailwind CSS
+- Tailwind CSS 4
 - shadcn/ui components
 
 ## Contributing

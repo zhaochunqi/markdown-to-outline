@@ -1,23 +1,20 @@
 'use client';
 
 import { useServiceWorker } from '@/hooks/useServiceWorker';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 
 export function ServiceWorkerProvider() {
   const { needsUpdate, updateServiceWorker } = useServiceWorker();
-  const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
-  useEffect(() => {
-    if (needsUpdate) {
-      setShowUpdatePrompt(true);
-    }
-  }, [needsUpdate]);
+  // Derived, not mirrored into state: no effect needed
+  const showUpdatePrompt = needsUpdate && !dismissed;
 
   if (!showUpdatePrompt) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 max-w-sm animate-slide-in-bottom">
+    <div className="animate-slide-in-bottom fixed right-6 bottom-6 z-50 max-w-sm">
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
@@ -36,7 +33,7 @@ export function ServiceWorkerProvider() {
               </button>
               <button
                 type="button"
-                onClick={() => setShowUpdatePrompt(false)}
+                onClick={() => setDismissed(true)}
                 className="px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:text-gray-900"
               >
                 稍后
