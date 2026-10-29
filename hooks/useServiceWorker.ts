@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 
 export function useServiceWorker() {
-  const [isSupported, setIsSupported] = useState(false);
-  const [isRegistered, setIsRegistered] = useState(false);
   const [needsUpdate, setNeedsUpdate] = useState(false);
 
   useEffect(() => {
@@ -25,9 +23,6 @@ export function useServiceWorker() {
       }
     };
 
-    setIsSupported(true);
-
-    // 注册 Service Worker
     navigator.serviceWorker
       .register('/sw.js')
       .then(registration => {
@@ -36,7 +31,6 @@ export function useServiceWorker() {
         }
 
         registrationRef = registration;
-        setIsRegistered(true);
 
         // 检查更新
         registration.addEventListener('updatefound', handleUpdateFound);
@@ -74,8 +68,6 @@ export function useServiceWorker() {
   };
 
   return {
-    isSupported,
-    isRegistered,
     needsUpdate,
     updateServiceWorker,
   };

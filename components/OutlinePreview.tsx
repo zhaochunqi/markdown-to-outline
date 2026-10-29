@@ -148,7 +148,7 @@ function OutlineText({ item }: { item: OutlineItem }) {
         >
           {marker}
         </span>
-        <span className="whitespace-pre-wrap break-words">{body}</span>
+        <span className="break-words whitespace-pre-wrap">{body}</span>
       </span>
     );
   }
@@ -159,17 +159,17 @@ function OutlineText({ item }: { item: OutlineItem }) {
     return (
       <span className="inline-flex flex-wrap items-baseline gap-2 font-medium text-stone-950">
         <span className="font-mono text-xs text-stone-400">{marker}</span>
-        <span className="whitespace-pre-wrap break-words">{body}</span>
+        <span className="break-words whitespace-pre-wrap">{body}</span>
       </span>
     );
   }
 
   // Multi-line blocks (tables, mostly) read much better unwrapped and scrollable
   if (text.includes('\n')) {
-    return <span className="block whitespace-pre overflow-x-auto">{text}</span>;
+    return <span className="block overflow-x-auto whitespace-pre">{text}</span>;
   }
 
-  return <span className="whitespace-pre-wrap break-words">{text}</span>;
+  return <span className="break-words whitespace-pre-wrap">{text}</span>;
 }
 
 function OutlineNode({ item }: { item: OutlineItem }) {
@@ -185,7 +185,7 @@ function OutlineNode({ item }: { item: OutlineItem }) {
             <span className="h-1.5 w-1.5 rounded-full bg-stone-400 group-hover:bg-stone-700" />
           )}
         </span>
-        <span className="ml-2 min-w-0 break-words leading-6">
+        <span className="ml-2 min-w-0 leading-6 break-words">
           <OutlineText item={item} />
         </span>
       </div>
