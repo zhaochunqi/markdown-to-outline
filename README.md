@@ -5,9 +5,11 @@ This project is a Next.js application that converts Markdown content to an outli
 ## Features
 
 - Convert Markdown to outline
+- GFM tables stay in a single block, the way Logseq expects them
 - Real-time preview
 - Customizable outline options
 - Responsive design
+- Offline-first PWA
 
 ## Getting Started
 
@@ -21,7 +23,7 @@ This project is a Next.js application that converts Markdown content to an outli
 1. Clone the repository:
 
    ```
-   git clone https://github.com/your-username/markdown-to-outline.git
+   git clone https://github.com/zhaochunqi/markdown-to-outline.git
    ```
 
 2. Install dependencies:

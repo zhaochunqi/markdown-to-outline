@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
+import remarkGfm from 'remark-gfm';
 import matter from 'gray-matter';
 import { convertToOutline } from '../utils/convert-to-outline';
 import type { MarkdownNode } from '../utils/convert-to-outline';
@@ -35,7 +36,7 @@ export function useMarkdownToOutline(
   const cacheExpiryMs = 5 * 60 * 1000;
 
   const markdownProcessor = useMemo(() => {
-    return unified().use(remarkParse);
+    return unified().use(remarkParse).use(remarkGfm);
   }, []);
 
   const createContentHash = useCallback((content: string): string => {

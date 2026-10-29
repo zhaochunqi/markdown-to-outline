@@ -65,6 +65,22 @@ interface ListNode extends MarkdownNode {
   children?: MarkdownNode[];
 }
 
+interface TableNode extends MarkdownNode {
+  type: 'table';
+  align?: (('left' | 'right' | 'center') | null)[];
+  children?: TableRowNode[];
+}
+
+interface TableRowNode extends MarkdownNode {
+  type: 'tableRow';
+  children?: TableCellNode[];
+}
+
+interface TableCellNode extends MarkdownNode {
+  type: 'tableCell';
+  children?: ProcessableNode[];
+}
+
 interface ParagraphNode extends MarkdownNode {
   type: 'paragraph';
   children?: (TextNode | LinkNode | EmphasisNode | InlineCodeNode)[];
@@ -164,15 +180,10 @@ export function convertToOutline(
         .map((part, index) => {
           if (index === 0) {
             return `${getIndent(depth)}- ${part}`;
-          } else {
-            // For subsequent parts in the same paragraph, check for special cases
-            if (part.includes('|') && part.includes('`') && part.includes('id::')) {
-              return `${getIndent(depth)}- ${part}`;
-            } else {
-              // For subsequent parts in the same paragraph, no bullet prefix
-              return part;
-            }
           }
+          // Continuation lines of a multi-line block (e.g. a <br> soft break) must be
+          // indented, otherwise Logseq reads each line as a separate top-level block.
+          return `${getIndent(depth + 1)}${part}`;
         })
         .join('\n');
 
@@ -185,6 +196,9 @@ export function convertToOutline(
         .filter(Boolean)
         .join('\n');
 
+    case 'table':
+      return convertTable(node as TableNode, depth, options);
+
     case 'listItem':
       if (!('children' in node)) {
         throw new Error(`Invalid listItem node: ${JSON.stringify(node)}`);
@@ -192,6 +206,20 @@ export function convertToOutline(
 
       const results: string[] = [];
       let firstParagraphAdded = false;
+
+      // remark-gfm parses `- [ ] x` / `- [x] x` into a `checked` flag instead of text,
+      // so the checkbox marker has to be rebuilt here.
+      const taskMarker = (node as MarkdownNode & { checked?: boolean | null }).checked;
+      const taskPrefix =
+        typeof taskMarker === 'boolean'
+          ? options.convertToLogseqTodo
+            ? taskMarker
+              ? 'DONE '
+              : 'TODO '
+            : taskMarker
+              ? '[x] '
+              : '[ ] '
+          : '';
 
       for (const child of node.children as MarkdownNode[]) {
         if (child.type === 'paragraph') {
@@ -211,7 +239,7 @@ export function convertToOutline(
             parts.forEach((part, index) => {
               if (!firstParagraphAdded) {
                 // First part - process it with the list item
-                let finalContent = part;
+                let finalContent = `${taskPrefix}${part}`;
 
                 if (options.convertToLogseqTodo) {
                   const todoUncheckedRegex = /^\s*\[ \]\s*(.*)/;
@@ -247,21 +275,11 @@ export function convertToOutline(
             results.push(childContent);
           }
         } else {
-          // For other non-paragraph children (like code blocks), create separate bullet points
-          // If we haven't added the first paragraph yet and this is the first non-paragraph child,
-          // it means there was no paragraph, so just process this child
-          if (!firstParagraphAdded && results.length === 0) {
-            // No paragraph found yet, just process this child as a regular item
-            const childContent = convertToOutline(child, depth, options);
-            if (childContent) {
-              results.push(childContent);
-            }
-          } else {
-            // Add the child content as a separate bullet point at the same level as the first paragraph
-            const childContent = convertToOutline(child, depth, options);
-            if (childContent) {
-              results.push(childContent);
-            }
+          // Block-level children (tables, code blocks, ...) hang under the item, not beside it
+          const childDepth = child.type === 'table' ? depth + 1 : depth;
+          const childContent = convertToOutline(child, childDepth, options);
+          if (childContent) {
+            results.push(childContent);
           }
         }
       }
@@ -646,6 +664,69 @@ function convertParagraphForHierarchy(
   }
 
   return { result: results.join('\n'), followingSiblingDepth };
+}
+
+/**
+ * Converts a GFM table node into a single Logseq block.
+ * Logseq keeps a table inside one block: the first line carries the bullet,
+ * every following line is a plain indented continuation line.
+ */
+function convertTable(node: TableNode, depth: number, options: ConvertOptions): string {
+  const rows = (node.children || []).filter(row => row.type === 'tableRow');
+  if (rows.length === 0) return '';
+
+  const cellsOf = (row: TableRowNode): string[] =>
+    (row.children || [])
+      .filter(cell => cell.type === 'tableCell')
+      .map(cell => serializeTableCell(cell, options));
+
+  const bodyRows = rows.slice(1).map(cellsOf);
+  const headerCells = cellsOf(rows[0]);
+  const columnCount = Math.max(headerCells.length, ...bodyRows.map(cells => cells.length));
+  if (columnCount === 0) return '';
+
+  const toLine = (cells: string[]): string => {
+    const padded = [...cells];
+    while (padded.length < columnCount) padded.push('');
+    return `| ${padded.join(' | ')} |`;
+  };
+
+  const align = node.align || [];
+  const separatorCells = Array.from({ length: columnCount }, (_, index) => {
+    switch (align[index]) {
+      case 'left':
+        return ':---';
+      case 'right':
+        return '---:';
+      case 'center':
+        return ':---:';
+      default:
+        return '---';
+    }
+  });
+
+  const lines = [toLine(headerCells), toLine(separatorCells), ...bodyRows.map(toLine)];
+
+  return lines
+    .map((line, index) =>
+      index === 0 ? `${getIndent(depth)}- ${line}` : `${getIndent(depth + 1)}${line}`
+    )
+    .join('\n');
+}
+
+function serializeTableCell(cell: TableCellNode, options: ConvertOptions): string {
+  const content = (cell.children || [])
+    .map(child => formatTextContent(child as ProcessableNode, options))
+    .join('')
+    .trim();
+
+  return (
+    content
+      // A cell is one physical line in GFM: soft breaks must become <br>
+      .replace(/\r?\n/g, '<br>')
+      // Unescaped pipes would split the row into extra columns
+      .replace(/(?<!\\)\|/g, '\\|')
+  );
 }
 
 function convertCodeAsBlockBody(node: CodeNode, depth: number): string {

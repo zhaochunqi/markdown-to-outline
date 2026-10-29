@@ -24,14 +24,33 @@ function parseOutline(content: string): OutlineItem[] {
   const lines = content.split('\n');
   const flatItems: OutlineItem[] = [];
 
+  // A Logseq block can span several lines: only `- ` starts a new block, every other
+  // line is an indented continuation of the block above (tables rely on this).
+  const appendContinuation = (line: string): void => {
+    const text = line.trim();
+    if (!text) return;
+    const current = flatItems[flatItems.length - 1];
+    if (!current) return;
+
+    if (current.code) {
+      current.code.value = `${current.code.value}\n${text}`;
+    } else {
+      current.text = `${current.text}\n${text}`;
+    }
+  };
+
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
-    const leadingSpaces = line.match(/^\s*/)?.[0].length ?? 0;
+    const bulletMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
+
+    if (!bulletMatch) {
+      appendContinuation(line);
+      continue;
+    }
+
+    const leadingSpaces = bulletMatch[1].length;
     const depth = Math.max(0, Math.floor(leadingSpaces / 2));
-    const text = line
-      .trim()
-      .replace(/^[-*]\s*/, '')
-      .trim();
+    const text = bulletMatch[2].trim();
 
     if (!text) continue;
 
@@ -113,8 +132,8 @@ function OutlineText({ item }: { item: OutlineItem }) {
   }
 
   const { text } = item;
-  const taskMatch = text.match(/^(TODO|DONE)\s+(.+)/);
-  const headingMatch = text.match(/^(#{1,6})\s+(.+)/);
+  const taskMatch = text.match(/^(TODO|DONE)\s+([\s\S]+)/);
+  const headingMatch = text.match(/^(#{1,6})\s+([\s\S]+)/);
 
   if (taskMatch) {
     const [, marker, body] = taskMatch;
@@ -129,7 +148,7 @@ function OutlineText({ item }: { item: OutlineItem }) {
         >
           {marker}
         </span>
-        <span>{body}</span>
+        <span className="whitespace-pre-wrap break-words">{body}</span>
       </span>
     );
   }
@@ -140,12 +159,17 @@ function OutlineText({ item }: { item: OutlineItem }) {
     return (
       <span className="inline-flex flex-wrap items-baseline gap-2 font-medium text-stone-950">
         <span className="font-mono text-xs text-stone-400">{marker}</span>
-        <span>{body}</span>
+        <span className="whitespace-pre-wrap break-words">{body}</span>
       </span>
     );
   }
 
-  return <span>{text}</span>;
+  // Multi-line blocks (tables, mostly) read much better unwrapped and scrollable
+  if (text.includes('\n')) {
+    return <span className="block whitespace-pre overflow-x-auto">{text}</span>;
+  }
+
+  return <span className="whitespace-pre-wrap break-words">{text}</span>;
 }
 
 function OutlineNode({ item }: { item: OutlineItem }) {

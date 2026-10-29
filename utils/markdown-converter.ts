@@ -1,5 +1,6 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
+import remarkGfm from 'remark-gfm';
 import { convertToOutline, MarkdownNode } from './convert-to-outline';
 
 export interface ConvertMarkdownOptions {
@@ -29,8 +30,8 @@ export function convertMarkdownToOutline(
   };
 
   try {
-    // Parse markdown to AST
-    const processor = unified().use(remarkParse);
+    // Parse markdown to AST (GFM for tables, strikethrough, task lists, autolinks)
+    const processor = unified().use(remarkParse).use(remarkGfm);
     const ast = processor.parse(markdown) as MarkdownNode;
 
     // Convert AST to outline format
@@ -50,7 +51,7 @@ export function parseMarkdown(markdown: string): MarkdownNode {
     throw new Error('Markdown input must be a string');
   }
 
-  const processor = unified().use(remarkParse);
+  const processor = unified().use(remarkParse).use(remarkGfm);
   return processor.parse(markdown) as MarkdownNode;
 }
 
